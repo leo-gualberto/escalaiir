@@ -289,7 +289,7 @@ nav .bdg{top:1px;margin-left:7px}
 /* ============ ARMAZENAMENTO ============ */
 const KEY='escala.v1';
 var MOSTRA_CODIGO=false;   // true = forcar a tela de digitar codigo
-const VERSAO='1.1';
+const VERSAO='1.2';
 /* Todo id precisa ser um UUID de verdade: e o tipo das colunas no banco.
    Enquanto isto gerava 8 caracteres soltos, o Postgres recusava
    "invalid input syntax for type uuid" e NADA que fosse criado no app
@@ -391,7 +391,11 @@ function normalizar(d){
      app pedia os dados de novo a cada acesso. */
   if(!d.igrejaId&&d.pessoas.length&&!d.pessoas.some(p=>p.perms.admin)){
     d.pessoas[0].perms={admin:true}; d.pessoas[0].lider=true;}
-  d.eventos.forEach(e=>{if(!e.chegadas)e.chegadas={};});
+  d.eventos.forEach(e=>{if(!e.chegadas)e.chegadas={};
+    if(typeof e.obs!=='string')e.obs='';
+    if(!Array.isArray(e.links))e.links=[];
+    e.links=e.links.filter(l=>l&&l.url)
+      .map(l=>({titulo:String(l.titulo||''),url:String(l.url||'')}));});
   if(d.ultimoAcesso&&!d.pessoas.some(p=>p.id===d.ultimoAcesso))d.ultimoAcesso=null;
   if(d.sessao&&!d.pessoas.some(p=>p.id===d.sessao))d.sessao=null;
   return d;
@@ -578,6 +582,8 @@ function textoWhats(ev){
     s+='\n*'+t.nome+'* (chegar '+chegada(ev,tid)+')\n';
     t.funcoes.forEach(f=>{for(let i=0;i<(f.qtd||1);i++){const a=escalaDe(ev,tid,f.id,i);
       s+='- '+f.nome+': '+(a?pessoa(a.pessoaId).nome:'(vago)')+'\n';}});});
+  if(ev.obs&&ev.obs.trim())s+='\n*Informacoes*\n'+ev.obs.trim()+'\n';
+  (ev.links||[]).forEach(l=>{if(l&&l.url)s+=(l.titulo?l.titulo+': ':'')+l.url+'\n';});
   return s;
 }
 
@@ -860,7 +866,8 @@ function vEscalas(){
       h+='<div class="row" onclick="go(\'evento\',\''+ev.id+'\')">'
         +'<div class="dchip'+(ev.data===hojeIso()?' hoje':'')+'"><b>'+d.getDate()+'</b><span>'+MES[d.getMonth()]+'</span></div>'
         +'<div class="grow"><div class="t">'+esc(ev.titulo)+'</div>'
-        +'<div class="s">'+DOW[d.getDay()]+' &middot; culto às '+esc(ev.hora)+'</div></div>'
+        +'<div class="s">'+DOW[d.getDay()]+' &middot; culto às '+esc(ev.hora)
+        +(temInfo(ev)?' &middot; '+ico('info',13)+' info':'')+'</div></div>'
         +'<span class="pill '+cor+'">'+txt+'</span><span class="chev">&#8250;</span></div>';});
     h+='</div>';}
   const p=passados().slice(0,5);
@@ -890,6 +897,7 @@ function vEvento(id){
     +(s.recusados?'<div style="color:var(--bad);font-size:13px;font-weight:600;margin-top:8px">'
       +s.recusados+' pessoa(s) precisam trocar esta data</div>':'')
     +'</div></div>';
+  h+=cartaoInfoCulto(ev);
   /* quem serve neste culto tem um atalho para resolver a propria vaga aqui
      mesmo, sem ter de voltar e procurar na lista */
   const minhaAqui=DB.escalas.find(a=>a.eventoId===ev.id&&a.pessoaId===DB.sessao);
@@ -942,6 +950,98 @@ function vEvento(id){
       +'<div class="gap"></div><button class="btn2 btn-d" onclick="apagarEvento(\''+ev.id+'\')">Excluir evento</button></div>';
   return h;
 }
+/* ---- INFORMACOES DO CULTO ----------------------------------------------
+   Um lugar so para o que a equipe precisa saber antes de chegar: o recado do
+   lider e os links (ordem do culto, arquivo de midia, planilha). Quem abre o
+   culto ve; quem cuida dos eventos edita. Antes isso vivia no grupo do
+   WhatsApp e sumia na conversa. */
+const temInfo=ev=>!!(ev&&((ev.obs&&ev.obs.trim())||(ev.links&&ev.links.length)));
+const urlOk=u=>/^https?:\/\//i.test(String(u||'').trim());
+const linkTitulo=l=>(l.titulo&&l.titulo.trim())
+  ||String(l.url).replace(/^https?:\/\/(www\.)?/i,'').split('/')[0];
+function cartaoInfoCulto(ev){
+  const podeEditar=euPosso('eventos');
+  if(!temInfo(ev)&&!podeEditar)return '';
+  let h='<div class="sec-t">Informações do culto'
+   +(podeEditar?'<span style="float:right;text-transform:none;letter-spacing:0">'
+     +'<a href="#" onclick="editarInfoCulto(\''+ev.id+'\');return false" '
+     +'style="color:var(--brand);text-decoration:none;font-weight:700">'
+     +(temInfo(ev)?'Editar':'+ Adicionar')+'</a></span>':'')
+   +'</div><div class="card">';
+  if(!temInfo(ev))h+='<div class="empty">Nada por aqui ainda.<br>'
+   +'Recados e links que a equipe precisa ver antes do culto.</div>';
+  else{
+    if(ev.obs&&ev.obs.trim())h+='<div class="row" style="cursor:default;align-items:flex-start">'
+     +'<span style="color:var(--brand);padding-top:2px">'+ico('info',18)+'</span>'
+     +'<div class="grow" style="white-space:pre-wrap;line-height:1.55;font-size:15px">'
+     +esc(ev.obs.trim())+'</div></div>';
+    (ev.links||[]).forEach(l=>{
+      if(!l||!urlOk(l.url))return;
+      h+='<a class="row" href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer" '
+       +'style="text-decoration:none;color:inherit">'
+       +'<div class="grow"><div class="t">'+esc(linkTitulo(l))+'</div>'
+       +'<div class="s" style="white-space:normal;word-break:break-all">'+esc(l.url)+'</div></div>'
+       +'<span class="chev">&#8250;</span></a>';});
+  }
+  return h+'</div>';
+}
+function linhaLinkHtml(l){
+  return '<div class="lkline" style="display:flex;gap:8px;margin-bottom:8px">'
+   +'<input class="lkTit" placeholder="Nome" value="'+esc((l&&l.titulo)||'')+'" style="margin:0;flex:1">'
+   +'<input class="lkUrl" placeholder="https://..." value="'+esc((l&&l.url)||'')+'" style="margin:0;flex:1.5">'
+   +'</div>';
+}
+function addLinhaLink(){
+  const c=document.getElementById('inLinks');
+  if(c)c.insertAdjacentHTML('beforeend',linhaLinkHtml(null));
+}
+function lerLinks(){
+  const out=[];
+  document.querySelectorAll('#inLinks .lkline').forEach(l=>{
+    const u=(l.querySelector('.lkUrl').value||'').trim();
+    if(!u)return;
+    out.push({titulo:(l.querySelector('.lkTit').value||'').trim(),
+      url:urlOk(u)?u:'https://'+u.replace(/^\/+/,'')});
+  });
+  return out;
+}
+/* O recado so serve se a pessoa souber que ele existe. O aviso entra na mesma
+   fila dos outros: vira notificacao no celular e fica em Avisos. */
+function avisarInfoCulto(ev){
+  const lista=DB.escalas.filter(a=>a.eventoId===ev.id);
+  lista.forEach(a=>avisar(a.pessoaId,
+    'Informações do culto atualizadas: '+ev.titulo+' ('+fmtLong(ev.data)+'). '
+    +'Abra o culto no app para ver.','info',ev.id));
+  if(lista.length)toast(lista.length+' aviso(s) na fila');
+}
+function editarInfoCulto(evId){
+  if(!exige('eventos'))return;
+  const ev=evento(evId); if(!ev)return;
+  const linhas=(ev.links&&ev.links.length)?ev.links:[null];
+  const escalados=DB.escalas.filter(a=>a.eventoId===ev.id).length;
+  let h='<label>Recado para a equipe</label>'
+   +'<textarea id="inObs" rows="6" placeholder="Ex.: entrada pelo estacionamento; '
+   +'ensaio 30min antes; ceia neste domingo.">'+esc(ev.obs||'')+'</textarea>'
+   +'<label style="margin-top:14px">Links</label><div id="inLinks">'
+   +linhas.map(linhaLinkHtml).join('')+'</div>'
+   +'<button class="btn2 btn-sm" style="width:auto" onclick="addLinhaLink()">+ Adicionar link</button>';
+  if(escalados)h+='<label style="margin-top:16px;display:flex;align-items:center;gap:9px;'
+   +'font-weight:600;text-transform:none;letter-spacing:0;font-size:15px">'
+   +'<input type="checkbox" id="inAvisar" style="width:auto;margin:0"> '
+   +'Avisar os '+escalados+' escalados</label>';
+  h+='<p style="font-size:13px;color:var(--muted);margin:10px 0 0">Todo mundo que abrir este '
+   +'culto vê estas informações.</p>';
+  openSheet('Informações do culto',h,()=>{
+    const antes=JSON.stringify([ev.obs||'',ev.links||[]]);
+    ev.obs=val('inObs');
+    ev.links=lerLinks();
+    const mudou=JSON.stringify([ev.obs,ev.links])!==antes;
+    const av=document.getElementById('inAvisar');
+    if(av&&av.checked&&mudou&&temInfo(ev))avisarInfoCulto(ev);
+    save();
+  });
+}
+
 function autoEscalar(id){if(!exige('escalas'))return;const ev=evento(id);
   const s=statusEvento(ev);
   if(s.preenchidos&&!confirm('Refazer a escala inteira deste evento?')){gerarEscala(ev,false);render();return;}
@@ -2057,7 +2157,8 @@ function achatar(db){
     (p.funcaoIds||[]).forEach(fid=>habilidades.push({perfil_id:p.id,funcao_id:fid}));
   });
   db.eventos.forEach(e=>{
-    eventos.push({id:e.id,igreja_id:ig,titulo:e.titulo,data:e.data,hora:e.hora});
+    eventos.push({id:e.id,igreja_id:ig,titulo:e.titulo,data:e.data,hora:e.hora,
+      obs:e.obs||null,links:e.links||[]});
     (e.teamIds||[]).forEach(tid=>eventos_equipes.push(
       {evento_id:e.id,equipe_id:tid,chegada:(e.chegadas&&e.chegadas[tid])||null}));
   });
@@ -2113,7 +2214,8 @@ function montar(dados){
     const ls=eqPorEvento[e.id]||[], ch={};
     ls.forEach(x=>{if(x.chegada)ch[x.equipe_id]=String(x.chegada).slice(0,5);});
     return{id:e.id,titulo:e.titulo,data:e.data,hora:String(e.hora).slice(0,5),
-      teamIds:ls.map(x=>x.equipe_id),chegadas:ch};
+      teamIds:ls.map(x=>x.equipe_id),chegadas:ch,
+      obs:e.obs||'',links:Array.isArray(e.links)?e.links:[]};
   });
   d.escalas=(dados.escalas||[]).map(a=>{
     const tid=equipeDaFuncao[a.funcao_id];
@@ -2265,6 +2367,7 @@ async function diagnosticoNuvem(){
       ['trocas','permuta_de','migracao-permuta.sql'],
       ['trocas','alerta_parada','migracao-troca-parada.sql'],
       ['eventos','alerta_buraco','migracao-alerta-buracos.sql'],
+      ['eventos','obs','migracao-info-culto.sql'],
       ['escalas','avisos','push-1-banco.sql']]){
       const{error}=await SB.from(tab).select(col,{count:'exact',head:true});
       if(error)extras.push({obj:tab+'.'+col,arquivo,ok:false,msg:error.message});
@@ -3868,6 +3971,8 @@ function vMinha(){
      +'<div style="margin-top:11px;font-size:15px">'
      +'<span class="pill" style="background:'+(t?t.cor:'#888')+'1f;color:'+(t?t.cor:'#888')+'">'+esc(t?t.nome:'')+'</span>'
      +' <b style="margin-left:6px">'+esc(f?f.nome:'')+'</b></div>'
+     +(temInfo(x.e)?'<div style="margin-top:11px;font-size:14px;font-weight:600;'
+       +'color:var(--brand)">'+ico('info',15)+' Este culto tem informações</div>':'')
      +'<div style="font-size:13px;color:var(--muted);margin-top:9px">'
      +'Toque para ver quem mais serve neste culto &rsaquo;</div></div>'
      +'<div style="display:flex;gap:8px;padding:0 16px 14px">'
