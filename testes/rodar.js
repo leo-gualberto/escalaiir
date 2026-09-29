@@ -271,6 +271,58 @@ teste('toda tabela enviada tem chave primária declarada', () => {
   igual(foraDaOrdem, [], 'tabelas fora da ordem de gravação');
 });
 
+/* ---------- janela e edição simultânea ---------- */
+
+teste('a janela de sincronização cobre 12 meses para trás', () => {
+  igual(app.JANELA_SYNC_DIAS, 365);
+  const corte = app.corteSync();
+  ok(corte < app.iso(new Date()), 'o corte fica no passado');
+  ok(app.dentroDaJanela(diaRelativo(-30)), 'mês passado entra');
+  ok(app.dentroDaJanela(diaRelativo(30)), 'o futuro sempre entra');
+  ok(!app.dentroDaJanela(diaRelativo(-400)), 'mais de um ano fica de fora');
+  ok(app.dentroDaJanela(null), 'sem data, não dá para excluir');
+});
+
+teste('o diff não apaga o histórico que ficou fora da janela', () => {
+  /* O app só tem o que baixou. Como a foto do servidor e o que está no
+     aparelho vêm da mesma janela, o que é antigo não aparece em nenhum dos
+     dois lados — e portanto nunca vira "apagar". */
+  const db = mundo();
+  db.eventos = [evento(E1, diaRelativo(7))];
+  db.escalas = [escala(A1, E1, VOZ, ANA)];
+  usar(db);
+  const foto = app.achatar(db);
+  db.escalas[0].status = 'confirmado';
+  const plano = app.diff(foto, app.achatar(db));
+  const apagando = Object.keys(plano).filter(t => plano[t].apagar.length);
+  igual(apagando, [], 'nada deveria ser apagado');
+  igual(plano.escalas.alterar.length, 1);
+});
+
+teste('a trava de edição simultânea olha só o que dá para comparar', () => {
+  const antes = { id: 'x', status: 'pendente', slot: 0, perfil_id: 'p1', avisos: { d1: 'ontem' } };
+  const agora = { id: 'x', status: 'confirmado', slot: 0, perfil_id: 'p1', avisos: { d1: 'hoje' } };
+  igual(app.colunasComparaveis(antes, agora), ['status'],
+    'só a coluna simples que mudou vira condição de gravação');
+  igual(app.colunasComparaveis(null, agora), [], 'linha nova não tem o que comparar');
+  igual(app.colunasComparaveis({ id: 'x', motivo: null }, { id: 'x', motivo: 'viagem' }), ['motivo'],
+    'valor que era nulo também é comparável');
+});
+
+teste('o índice por chave acha a linha anterior', () => {
+  const linhas = [{ id: 'a', status: 'x' }, { id: 'b', status: 'y' }];
+  const idx = app.indicePor('escalas', linhas);
+  igual(idx[app.chaveDe('escalas', { id: 'b' })].status, 'y');
+  const dupla = app.indicePor('habilidades', [{ perfil_id: 'p', funcao_id: 'f' }]);
+  ok(dupla[app.chaveDe('habilidades', { perfil_id: 'p', funcao_id: 'f' })], 'chave composta');
+});
+
+teste('o aviso de conflito diz o que mudou, em português', () => {
+  const txt = app.descreveConflitos([{ tab: 'escalas' }, { tab: 'escalas' }, { tab: 'eventos' }]);
+  ok(txt.indexOf('a escala') >= 0 && txt.indexOf('o culto') >= 0, txt);
+  ok(txt.indexOf('escalas,') < 0, 'não pode vazar nome de tabela: ' + txt);
+});
+
 /* ---------- trocas ---------- */
 
 teste('quem pode assumir uma troca', () => {

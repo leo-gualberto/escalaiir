@@ -82,9 +82,11 @@ function carregar() {
     // informacoes do culto
     'temInfo', 'urlOk',
     // nuvem
-    'achatar', 'montar', 'diff', 'chaveDe', 'CHAVES', 'ORDEM', 'semNulo'
+    'achatar', 'montar', 'diff', 'chaveDe', 'CHAVES', 'ORDEM', 'semNulo',
+    'corteSync', 'dentroDaJanela', 'JANELA_SYNC_DIAS', 'TABELAS_JANELA',
+    'colunasComparaveis', 'indicePor', 'descreveConflitos'
   ];
-  const opcionais = ['corteSync', 'dentroDaJanela', 'colunasComparaveis', 'JANELA_SYNC_DIAS'];
+  const opcionais = [];
   const todos = nomes.concat(opcionais);
   const devolve = 'return {' + todos
     .map(n => `${n}: (typeof ${n} === 'undefined' ? undefined : ${n})`).join(',') + ',' +

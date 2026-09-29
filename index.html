@@ -504,6 +504,9 @@ function inicioJanela(){
    duas pessoas com o mesmo tanto no mes, vai a que serviu menos no trimestre.
    Sem esse desempate, o primeiro culto de cada mes seria sorteio por nome. */
 const cicloDe=data=>String(data||'').slice(0,7);
+/* Com a nuvem ligada o aparelho guarda a janela de 12 meses, entao chamar
+   aquilo de "total" seria mentira — e a pessoa acharia que perdeu historico. */
+const rotuloTotal=()=>(typeof naNuvem==='function'&&naNuvem())?'nos últimos 12 meses':'no total';
 const cicloAtual=()=>cicloDe(hojeIso());
 function nomeDoCiclo(ciclo){
   const m=+String(ciclo||'').slice(5,7);
@@ -1338,7 +1341,7 @@ function vPessoas(){
      +'<div class="grow"><div class="t">'+esc(p.nome)
      +(temPainel(p)?' <span class="pill" style="font-size:10px;padding:2px 7px">líder</span>':'')+'</div>'
      +'<div class="s">'+esc(ts||'sem equipe')
-     +' &middot; '+(mc.total[p.id]||0)+' no total'
+     +' &middot; '+(mc.total[p.id]||0)+' '+rotuloTotal()
      +(nInd?' &middot; '+nInd+' dia(s) off':'')+'</div></div>'
      +'<span class="pill '+cor+'">'+c+'x no mês</span><span class="chev">&#8250;</span></div>';});
   return h+'</div>';
@@ -1348,7 +1351,8 @@ function vPessoa(id){
   let h=voltarBar(p.nome);
   const proximas=DB.escalas.filter(a=>a.pessoaId===p.id).map(a=>({a,e:evento(a.eventoId)}))
     .filter(x=>x.e&&x.e.data>=hojeIso()).sort((x,y)=>x.e.data.localeCompare(y.e.data));
-  h+='<p class="sub">'+esc(p.telefone||'sem telefone')+' &middot; '+carga(p.id)+' escalas no total</p>';
+  h+='<p class="sub">'+esc(p.telefone||'sem telefone')+' &middot; '+carga(p.id)+' escalas '
+   +rotuloTotal()+'</p>';
   const completo=p.email&&p.nascimento;
   h+='<div class="pad"><div class="card" style="margin:0 0 12px;padding:14px 16px">'
    +'<div style="display:flex;align-items:center;gap:12px">'
@@ -1702,7 +1706,8 @@ function relatorio(){
      +'<div class="grow"><div class="t">'+esc(p.nome)
      +(pesado?' <span class="pill bad" style="font-size:10px;padding:2px 7px">mais carregada</span>':'')
      +'</div>'
-     +'<div class="s">'+jan[p.id]+' nos últimos '+JANELA_RODIZIO+' dias &middot; '+tot[p.id]+' no total</div>'
+     +'<div class="s">'+jan[p.id]+' nos últimos '+JANELA_RODIZIO+' dias &middot; '
+     +tot[p.id]+' '+rotuloTotal()+'</div>'
      +'<div class="bar"><i style="width:'+Math.round(c/max*100)+'%'
      +(pesado?';background:var(--warn)':'')+'"></i></div></div>'
      +'<span class="pill'+(c?'':' mut')+'">'+c+'</span></div>';});
@@ -2284,6 +2289,45 @@ function montar(dados){
   return d;
 }
 
+/* ---- verificacao de edicao simultanea ----------------------------------
+   Nao ha coluna de versao no banco, entao a checagem viaja na propria
+   gravacao: alem da chave, o UPDATE exige que as colunas que mudaram ainda
+   estejam com o valor antigo. Se outra pessoa mexeu, nenhuma linha casa.
+   Colunas de lista ou objeto (jsonb) ficam de fora da comparacao: nao da
+   para compara-las com igualdade simples no PostgREST. */
+const comparavel=v=>v===null||v===undefined||typeof v==='string'
+  ||typeof v==='number'||typeof v==='boolean';
+function colunasComparaveis(antes,agora){
+  if(!antes)return [];
+  return Object.keys(agora).filter(k=>
+    JSON.stringify(antes[k])!==JSON.stringify(agora[k])&&comparavel(antes[k]));
+}
+function indicePor(tab,linhas){
+  const m={}; (linhas||[]).forEach(l=>{m[chaveDe(tab,l)]=l;}); return m;
+}
+const NOME_TABELA={escalas:'a escala',eventos:'o culto',trocas:'o pedido de troca',
+  perfis:'o cadastro de alguém',equipes:'a equipe',funcoes:'a função',
+  avisos:'um aviso',ausencias:'o período bloqueado',
+  indisponibilidades:'um dia bloqueado',eventos_equipes:'as equipes do culto',
+  habilidades:'as funções de alguém'};
+function descreveConflitos(lista){
+  const quais=[...new Set(lista.map(c=>NOME_TABELA[c.tab]||c.tab))];
+  return 'Alguém alterou '+quais.join(' e ')+' antes de você. Recarreguei o que está no servidor.';
+}
+/* traz a foto do servidor por cima do que esta aqui, preservando so o que e
+   deste aparelho (quem entrou, se o convite de instalacao ja foi dispensado) */
+async function recarregarDoServidor(){
+  const dados=await nuvemBaixar();
+  if(!dados.perfis||!dados.perfis.length)return false;
+  const antes=SNAP?JSON.stringify(SNAP):'';
+  const novo=montar(dados);
+  DB=normalizar(Object.assign(novo,{sessao:DB.sessao,ultimoAcesso:DB.ultimoAcesso,
+    meuId:DB.meuId,instalarOculto:DB.instalarOculto}));
+  SNAP=achatar(DB); ULTIMO_SYNC=new Date().toISOString();
+  try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}
+  return JSON.stringify(SNAP)!==antes;
+}
+
 /* chave primaria de cada tabela, para o diff saber comparar */
 const CHAVES={equipes:['id'],funcoes:['id'],perfis:['id'],habilidades:['perfil_id','funcao_id'],
   eventos:['id'],eventos_equipes:['evento_id','equipe_id'],escalas:['id'],
@@ -2311,16 +2355,59 @@ function diff(antes,agora){
 const ORDEM=['equipes','funcoes','perfis','habilidades','eventos','eventos_equipes',
   'escalas','indisponibilidades','ausencias','trocas','avisos'];
 
+/* ---- janela de sincronizacao -------------------------------------------
+   Baixar o banco inteiro a cada abertura funciona no primeiro ano e vai
+   ficando lento sozinho: dois anos de escalas sao milhares de linhas que o
+   celular baixa so para mostrar o proximo domingo. O app passa a trazer uma
+   janela de 12 meses para tras, mais tudo o que e futuro — que e o quanto o
+   rodizio, o relatorio e a tela de anteriores precisam enxergar.
+   O diff nao apaga o que ficou de fora porque essas linhas tambem nao estao
+   aqui: ele compara a foto do que veio com o que existe no aparelho. */
+const JANELA_SYNC_DIAS=365;
+function corteSync(){
+  const d=new Date(); d.setDate(d.getDate()-JANELA_SYNC_DIAS); return iso(d);
+}
+const dentroDaJanela=data=>!data||String(data)>=corteSync();
+/* tabelas que crescem com o tempo e por isso vem pela janela */
+const TABELAS_JANELA=['eventos','eventos_equipes','escalas','indisponibilidades',
+  'ausencias','trocas','avisos'];
+/* o .in() do PostgREST vai na URL: com mil ids a requisicao estoura */
+async function emLotes(lista,tamanho,fn){
+  const saida=[];
+  for(let i=0;i<lista.length;i+=tamanho){
+    const parte=await fn(lista.slice(i,i+tamanho));
+    if(parte&&parte.length)saida.push.apply(saida,parte);
+  }
+  return saida;
+}
 async function nuvemBaixar(){
-  const tabelas=['igrejas','equipes','funcoes','perfis','habilidades','eventos',
-    'eventos_equipes','escalas','indisponibilidades','ausencias','trocas','avisos',
-    'push_assinaturas'];
+  const corte=corteSync();
   const dados={};
-  for(const t of tabelas){
-    const{data,error}=await SB.from(t).select('*');
+  const pega=async(t,filtro)=>{
+    let q=SB.from(t).select('*');
+    if(filtro)q=filtro(q);
+    const{data,error}=await q;
     if(error)throw new Error(t+': '+error.message);
     dados[t]=data||[];
-  }
+    return dados[t];
+  };
+  /* cadastro da igreja: pequeno e sempre inteiro */
+  for(const t of ['igrejas','equipes','funcoes','perfis','habilidades','push_assinaturas'])
+    await pega(t);
+  const eventos=await pega('eventos',q=>q.gte('data',corte));
+  await pega('indisponibilidades',q=>q.gte('data',corte));
+  await pega('ausencias',q=>q.gte('fim',corte));
+  await pega('avisos',q=>q.gte('quando',new Date(corte+'T00:00:00').toISOString()));
+  const evIds=eventos.map(e=>e.id);
+  dados.eventos_equipes=await emLotes(evIds,200,async parte=>{
+    const{data,error}=await SB.from('eventos_equipes').select('*').in('evento_id',parte);
+    if(error)throw new Error('eventos_equipes: '+error.message); return data;});
+  dados.escalas=await emLotes(evIds,200,async parte=>{
+    const{data,error}=await SB.from('escalas').select('*').in('evento_id',parte);
+    if(error)throw new Error('escalas: '+error.message); return data;});
+  dados.trocas=await emLotes(dados.escalas.map(a=>a.id),200,async parte=>{
+    const{data,error}=await SB.from('trocas').select('*').in('escala_id',parte);
+    if(error)throw new Error('trocas: '+error.message); return data;});
   /* So os nomes da igreja, para o voluntario saber quem pediu a troca.
      Opcional de proposito: bancos que ainda nao rodaram a migracao seguem
      funcionando, apenas sem os nomes das outras pessoas. */
@@ -2343,6 +2430,7 @@ async function nuvemEnviar(){
      progresso das 6 primeiras: na tentativa seguinte o app reenviava
      linhas que ja estavam no banco e levava "duplicate key" para sempre. */
   const parcial=Object.assign({},SNAP);
+  const conflitos=[];
   try{
     const agora=achatar(DB);
     const plano=diff(SNAP,agora);
@@ -2356,16 +2444,34 @@ async function nuvemEnviar(){
       /* linha que ja existia -> UPDATE. Linha nova -> INSERT.
          Com upsert, editar o proprio cadastro exigia permissao de criar
          pessoas, e o voluntario levava "permission denied". */
+      const antesDaTabela=indicePor(tab,SNAP[tab]);
       for(const l of p.alterar){
+        const antes=antesDaTabela[chaveDe(tab,l)];
         let q=SB.from(tab).update(semNulo(l));
         CHAVES[tab].forEach(k=>{q=q.eq(k,l[k]);});
-        const{error}=await q; if(error)throw new Error(tab+' (alterar): '+error.message);
+        /* So grava se a linha ainda estiver como estava quando a baixamos.
+           Duas pessoas montando a mesma escala ao mesmo tempo era o pior caso
+           silencioso do app: a ultima a salvar apagava o trabalho da outra sem
+           ninguem perceber. Agora a gravacao nao casa, o app recarrega e diz. */
+        const guardas=colunasComparaveis(antes,l);
+        guardas.forEach(k=>{ q = antes[k]===null||antes[k]===undefined ? q.is(k,null) : q.eq(k,antes[k]); });
+        const{data,error}=await q.select(CHAVES[tab][0]);
+        if(error)throw new Error(tab+' (alterar): '+error.message);
+        if(guardas.length&&(!data||!data.length))conflitos.push({tab,linha:l});
       }
       if(p.inserir.length){
         const{error}=await SB.from(tab).insert(p.inserir.map(semNulo));
         if(error)throw new Error(tab+' (inserir): '+error.message);
       }
       parcial[tab]=agora[tab];   /* esta tabela ficou em dia */
+    }
+    /* alguem alterou antes: a verdade passa a ser a do servidor */
+    if(conflitos.length){
+      await recarregarDoServidor();
+      NUVEM_ESTADO='on'; NUVEM_ERRO='';
+      toast(descreveConflitos(conflitos));
+      try{render();}catch(e){}
+      return;
     }
     /* configuracao da igreja fica em colunas, nao em tabela */
     if(DB.igrejaId){
@@ -2497,14 +2603,18 @@ async function diagnosticoNuvem(){
   h+='<div class="card" style="margin:0">';
   linhas.forEach(r=>{
     const igual=r.nuvem===r.local;
+    const daJanela=TABELAS_JANELA.indexOf(r.tab)>=0&&!r.erro&&!igual&&r.nuvem>r.local;
     h+='<div class="row" style="cursor:default"><div class="grow">'
      +'<div class="t">'+esc(r.tab)+'</div>'
      +'<div class="s">aqui: '+r.local+' &middot; na nuvem: '+(r.nuvem==null?'?':r.nuvem)
-     +(r.pendente?' &middot; '+r.pendente+' pendente(s)':'')+'</div>'
+     +(r.pendente?' &middot; '+r.pendente+' pendente(s)':'')
+     +(daJanela?' &middot; o aparelho guarda os últimos 12 meses':'')+'</div>'
      +(r.erro?'<div style="color:var(--bad);font-size:12.5px;font-weight:600;margin-top:5px;'
        +'word-break:break-word">'+esc(r.erro)+'</div>':'')+'</div>'
      +(r.erro?'<span class="pill bad">erro</span>'
-       :igual?'<span class="pill ok">ok</span>':'<span class="pill warn">difere</span>')
+       :igual?'<span class="pill ok">ok</span>'
+       :daJanela?'<span class="pill mut">janela</span>'
+       :'<span class="pill warn">difere</span>')
      +'</div>';
   });
   h+='</div><div class="gap"></div><div class="pad">'
@@ -4327,7 +4437,7 @@ function vConta(){
    +'<div class="grow"><div class="t">'+esc(p.nome)+'</div><div class="s">'+esc(ts||'sem equipe')+'</div></div></div>'
    +linhaDado('E-mail',p.email)+linhaDado('Telefone',p.telefone||'não informado')
    +linhaDado('Nascimento',p.nascimento?fmtLong(p.nascimento)+' ('+idade(p.nascimento)+')':'não informado')
-   +linhaDado('Total de escalas',carga(p.id)+'x')+'</div>';
+   +linhaDado('Escalas '+rotuloTotal(),carga(p.id)+'x')+'</div>';
   h+=cartaoConexao()+cartaoPush()+cartaoAgenda();
   h+='<div class="sec-t">Mais</div><div class="card">'
    +'<div class="row" onclick="go(\'avisos\')"><div class="grow"><div class="t">Avisos</div>'
@@ -4416,6 +4526,37 @@ if(nuvemCfg()){
   setTimeout(()=>sincronizarPush(),500);
   setTimeout(()=>{try{lembrarPush();}catch(e){}},1200);
 }
+
+/* Enquanto voce esta com o app aberto, outra pessoa pode mexer na escala.
+   Ao voltar para o app — e de dois em dois minutos com ele na frente — o app
+   busca o que mudou. Nunca quando ha algo seu esperando para subir ou uma
+   folha aberta: puxar o tapete no meio de uma edicao seria pior do que a
+   tela desatualizada. */
+var ULTIMA_ATUALIZACAO=0;
+async function atualizarDoServidor(forcar){
+  try{
+    if(typeof naNuvem!=='function'||!naNuvem()||!ONLINE||SALVANDO)return false;
+    if(document.hidden)return false;
+    if(pendentes())return false;
+    const folha=document.getElementById('sheet');
+    if(folha&&folha.classList.contains('on'))return false;
+    const agora=Date.now();
+    if(!forcar&&agora-ULTIMA_ATUALIZACAO<60000)return false;
+    ULTIMA_ATUALIZACAO=agora;
+    const mudou=await recarregarDoServidor();
+    if(mudou){
+      const y=window.scrollY||0;
+      render();
+      window.scrollTo(0,y);          /* a tela mudou, o lugar da leitura nao */
+    }
+    return mudou;
+  }catch(e){return false;}
+}
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden)atualizarDoServidor(true);
+});
+window.addEventListener('focus',()=>atualizarDoServidor(false));
+setInterval(()=>atualizarDoServidor(false),120000);
 
 /* Conexao: o navegador avisa quando cai e quando volta */
 window.addEventListener('online',voltouOnline);
