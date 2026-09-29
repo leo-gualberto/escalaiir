@@ -1,0 +1,12 @@
+{
+  // Publicação do tecnica.escalaiir.com.
+  // O site é estático (um index.html + service worker + ícones), então este
+  // Worker não tem código: só serve os arquivos da pasta. O "name" precisa
+  // continuar igual ao Worker que já existe na Cloudflare, senão o deploy
+  // criaria um Worker novo e o domínio continuaria na versão antiga.
+  "name": "wispy-base-2c74",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./"
+  }
+}
