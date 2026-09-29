@@ -142,6 +142,77 @@ teste('mapaCarga bate com as contas individuais', () => {
   igual(m.ultima[CAIO], '0000-00-00', 'quem nunca serviu não tem última vez');
 });
 
+/* ---------- ciclo mensal ---------- */
+
+teste('a conta do mês pesa mais que a dos últimos 90 dias', () => {
+  /* Ana serviu muito no mês passado, Bia já serviu uma vez neste.
+     Dentro do mês quem tem menos vai na frente: é a vez da Ana. */
+  const db = mundo();
+  db.teams[0].funcoes = [{ id: VOZ, nome: 'Vocal', qtd: 1 }];
+  db.eventos = [evento(E1, '2027-03-14')];
+  db.eventos.push(evento(ID(60), '2027-02-07'), evento(ID(61), '2027-02-14'),
+                  evento(ID(62), '2027-02-21'), evento(ID(63), '2027-03-07'));
+  db.escalas = [
+    escala(ID(70), ID(60), VOZ, ANA), escala(ID(71), ID(61), VOZ, ANA),
+    escala(ID(72), ID(62), VOZ, ANA), escala(ID(73), ID(63), VOZ, BIA)
+  ];
+  db.pessoas = [pessoa(ANA, 'Ana', [VOZ], { admin: true }), pessoa(BIA, 'Bia', [VOZ])];
+  usar(db);
+  igual(app.cargaCiclo(ANA, '2027-03'), 0, 'Ana não serviu em março');
+  igual(app.cargaCiclo(BIA, '2027-03'), 1, 'Bia já serviu uma vez em março');
+  app.gerarEscala(db.eventos[0], false);
+  igual(escaladoEm(db, VOZ), ANA, 'quem tem menos NO MÊS entra primeiro');
+});
+
+teste('a conta zera na virada do mês', () => {
+  /* Ambas serviram 3x em março. Em abril a Bia já pegou uma; a próxima é da Ana,
+     mesmo com o histórico de março empatado. */
+  const db = mundo();
+  db.teams[0].funcoes = [{ id: VOZ, nome: 'Vocal', qtd: 1 }];
+  db.pessoas = [pessoa(ANA, 'Ana', [VOZ], { admin: true }), pessoa(BIA, 'Bia', [VOZ])];
+  db.eventos = [evento(E1, '2027-04-11')];
+  ['2027-03-07', '2027-03-14', '2027-03-21'].forEach((d, i) => {
+    db.eventos.push(evento(ID(80 + i), d), evento(ID(90 + i), d));
+    db.escalas.push(escala(ID(100 + i), ID(80 + i), VOZ, ANA),
+                    escala(ID(110 + i), ID(90 + i), VOZ, BIA));
+  });
+  db.eventos.push(evento(ID(120), '2027-04-04'));
+  db.escalas.push(escala(ID(121), ID(120), VOZ, BIA));
+  usar(db);
+  igual(app.cargaCiclo(ANA, '2027-04'), 0);
+  igual(app.cargaCiclo(BIA, '2027-04'), 1);
+  app.gerarEscala(db.eventos[0], false);
+  igual(escaladoEm(db, VOZ), ANA, 'em abril vale a conta de abril');
+});
+
+teste('ao longo do mês a distribuição fica igual', () => {
+  const db = mundo();
+  db.teams[0].funcoes = [{ id: VOZ, nome: 'Vocal', qtd: 1 }];
+  db.pessoas = [pessoa(ANA, 'Ana', [VOZ], { admin: true }), pessoa(BIA, 'Bia', [VOZ]),
+                pessoa(CAIO, 'Caio', [VOZ])];
+  const dias = ['2027-05-02', '2027-05-09', '2027-05-16', '2027-05-23', '2027-05-30', '2027-06-06'];
+  db.eventos = dias.map((d, i) => evento(ID(130 + i), d));
+  usar(db);
+  db.eventos.forEach(ev => app.gerarEscala(ev, false));
+  const maio = [ANA, BIA, CAIO].map(id => app.cargaCiclo(id, '2027-05'));
+  igual(maio.sort(), [1, 2, 2], 'cinco cultos entre três pessoas, sem ninguém sobrecarregado');
+  const junho = [ANA, BIA, CAIO].map(id => app.cargaCiclo(id, '2027-06'));
+  igual(junho.filter(n => n).length, 1, 'junho começa do zero e distribui de novo');
+  igual(app.cargaCiclo(ANA, '2027-05') + app.cargaCiclo(BIA, '2027-05')
+      + app.cargaCiclo(CAIO, '2027-05'), 5, 'todos os cultos de maio foram preenchidos');
+});
+
+teste('mapaCarga conta o mês pedido', () => {
+  const db = mundo();
+  db.eventos = [evento(E1, '2027-07-04'), evento(E0, '2027-08-01')];
+  db.escalas = [escala(A1, E1, VOZ, ANA), escala(A2, E0, VOZ, ANA)];
+  usar(db);
+  const m = app.mapaCarga(app.inicioJanela(), '2027-07');
+  igual(m.mes[ANA], 1, 'só o culto de julho');
+  igual(m.total[ANA], 2, 'o total continua contando tudo');
+  igual(m.mes[BIA], 0);
+});
+
 /* ---------- sincronização ---------- */
 
 teste('ida e volta para o formato do banco não perde nada', () => {

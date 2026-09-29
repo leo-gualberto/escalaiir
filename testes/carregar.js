@@ -72,7 +72,8 @@ function carregar() {
     'chegada', 'ausente', 'indisponivel', 'ausenciaEm', 'diasDoPeriodo', 'diasBloqueados',
     // escala
     'slotsDoEvento', 'escalaDe', 'candidatos', 'gerarEscala', 'definir', 'statusEvento',
-    'carga', 'cargaJanela', 'mapaCarga', 'inicioJanela', 'ultimaVez', 'textoWhats',
+    'carga', 'cargaJanela', 'cargaCiclo', 'cicloDe', 'cicloAtual', 'nomeDoCiclo',
+    'mapaCarga', 'inicioJanela', 'ultimaVez', 'textoWhats',
     // permissoes
     'pode', 'ehAdmin', 'temPainel',
     // trocas

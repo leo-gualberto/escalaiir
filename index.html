@@ -289,7 +289,7 @@ nav .bdg{top:1px;margin-left:7px}
 /* ============ ARMAZENAMENTO ============ */
 const KEY='escala.v1';
 var MOSTRA_CODIGO=false;   // true = forcar a tela de digitar codigo
-const VERSAO='1.2';
+const VERSAO='1.3';
 /* Todo id precisa ser um UUID de verdade: e o tipo das colunas no banco.
    Enquanto isto gerava 8 caracteres soltos, o Postgres recusava
    "invalid input syntax for type uuid" e NADA que fosse criado no app
@@ -496,6 +496,26 @@ const JANELA_RODIZIO=90;
 function inicioJanela(){
   const d=new Date(); d.setDate(d.getDate()-JANELA_RODIZIO); return iso(d);
 }
+/* ---- ciclo mensal ----------------------------------------------------
+   A regra da casa e simples de explicar para a equipe: dentro do mes, todo
+   mundo pega o mesmo tanto. A conta zera na virada do mes, entao quem serviu
+   muito em marco comeca abril em igualdade com quem serviu pouco.
+   A janela de 90 dias continua existindo, mas rebaixada a desempate: entre
+   duas pessoas com o mesmo tanto no mes, vai a que serviu menos no trimestre.
+   Sem esse desempate, o primeiro culto de cada mes seria sorteio por nome. */
+const cicloDe=data=>String(data||'').slice(0,7);
+const cicloAtual=()=>cicloDe(hojeIso());
+function nomeDoCiclo(ciclo){
+  const m=+String(ciclo||'').slice(5,7);
+  return (MESL[m-1]||'')+' de '+String(ciclo||'').slice(0,4);
+}
+function cargaCiclo(pid,ciclo){
+  ciclo=ciclo||cicloAtual();
+  return DB.escalas.filter(a=>{
+    if(a.pessoaId!==pid||!serviu(a))return false;
+    const e=evento(a.eventoId); return !!e&&cicloDe(e.data)===ciclo;
+  }).length;
+}
 function cargaJanela(pid,corte){
   corte=corte||inicioJanela();
   return DB.escalas.filter(a=>{
@@ -515,17 +535,18 @@ function ultimaVez(pid){
 /* Uma passada so pelas escalas, em vez de uma varredura por pessoa. Com dois
    anos de historico a diferenca e de centenas de milissegundos numa tela que
    a pessoa espera abrir na hora. */
-function mapaCarga(corte){
-  const total={},janela={},ultima={};
-  DB.pessoas.forEach(p=>{total[p.id]=0;janela[p.id]=0;ultima[p.id]='0000-00-00';});
+function mapaCarga(corte,ciclo){
+  const total={},janela={},ultima={},mes={};
+  DB.pessoas.forEach(p=>{total[p.id]=0;janela[p.id]=0;mes[p.id]=0;ultima[p.id]='0000-00-00';});
   DB.escalas.forEach(a=>{
     if(!serviu(a)||total[a.pessoaId]===undefined)return;
     total[a.pessoaId]++;
     const e=evento(a.eventoId); if(!e)return;
     if(e.data>ultima[a.pessoaId])ultima[a.pessoaId]=e.data;
     if(!corte||e.data>=corte)janela[a.pessoaId]++;
+    if(ciclo&&cicloDe(e.data)===ciclo)mes[a.pessoaId]++;
   });
-  return{total,janela,ultima};
+  return{total,janela,ultima,mes};
 }
 function candidatos(ev,tid,fid){
   return DB.pessoas.filter(p=>p.teamIds.includes(tid)&&p.funcaoIds.includes(fid)&&!ausente(p.id,ev.data));
@@ -539,10 +560,15 @@ function gerarEscala(ev,sobrescrever){
   const abertos=slotsDoEvento(ev).filter(s=>!escalaDe(ev,s.teamId,s.funcaoId,s.idx));
   /* tudo calculado de uma vez: antes, cada comparacao do sort varria a lista
      inteira de escalas para descobrir a ultima vez que a pessoa serviu */
-  const m=mapaCarga(inicioJanela());
+  /* o ciclo e o do MES DO CULTO, nao o de hoje: montar em setembro a escala
+     de outubro tem de usar a conta de outubro, senao o mes que vem ja nasce
+     desequilibrado */
+  const ciclo=cicloDe(ev.data);
+  const m=mapaCarga(inicioJanela(),ciclo);
   const adj=abertos.map(s=>candidatos(ev,s.teamId,s.funcaoId)
     .filter(p=>!ocupados.has(p.id))
-    .sort((a,b)=>m.janela[a.id]-m.janela[b.id]
+    .sort((a,b)=>m.mes[a.id]-m.mes[b.id]
+      ||m.janela[a.id]-m.janela[b.id]
       ||m.ultima[a.id].localeCompare(m.ultima[b.id])||a.nome.localeCompare(b.nome))
     .map(p=>p.id));
   const par={}; // pessoaId -> indice da vaga
@@ -1072,8 +1098,11 @@ function escolher(evId,tid,fid,idx){
   if(!exige('escalas'))return;
   const ev=evento(evId),f=funcao(tid,fid),atual=escalaDe(ev,tid,fid,idx);
   const usados=DB.escalas.filter(a=>a.eventoId===ev.id&&a!==atual).map(a=>a.pessoaId);
+  const ciclo=cicloDe(ev.data);
+  const mc=mapaCarga(inicioJanela(),ciclo);
   const aptos=DB.pessoas.filter(p=>p.teamIds.includes(tid)&&p.funcaoIds.includes(fid))
-    .sort((a,b)=>carga(a.id)-carga(b.id)||a.nome.localeCompare(b.nome));
+    .sort((a,b)=>mc.mes[a.id]-mc.mes[b.id]||mc.janela[a.id]-mc.janela[b.id]
+      ||a.nome.localeCompare(b.nome));
   let h='<p class="sub" style="margin:0 0 12px">'+esc(f.nome)+' &middot; '+fmt(ev.data)+'</p>';
   if(atual){const p=pessoa(atual.pessoaId);
     h+='<div class="card" style="margin:0 0 14px"><div class="slot"><div class="avatar">'+esc(ini(p.nome))+'</div>'
@@ -1088,8 +1117,9 @@ function escolher(evId,tid,fid,idx){
     const ind=ausente(p.id,ev.data), dup=usados.includes(p.id);
     if(atual&&p.id===atual.pessoaId)return;
     n++;
+    const noMes=mc.mes[p.id]||0;
     const tag=ind?'<span class="pill bad">'+esc(motivoAusencia(p.id,ev.data)||'Indisponivel')+'</span>':dup?'<span class="pill warn">Já escalado</span>'
-      :'<span class="pill mut">'+carga(p.id)+'x</span>';
+      :'<span class="pill '+(noMes?'mut':'ok')+'">'+noMes+'x no mês</span>';
     h+='<div class="row" onclick="definirUI(\''+evId+'\',\''+tid+'\',\''+fid+'\','+idx+',\''+p.id+'\')">'
       +'<div class="avatar" style="'+(ind?'opacity:.4':'')+'">'+esc(ini(p.nome))+'</div>'
       +'<div class="grow"><div class="t" style="'+(ind?'opacity:.5':'')+'">'+esc(p.nome)+'</div></div>'+tag+'</div>';});
@@ -1283,7 +1313,7 @@ function apagarFuncao(tid,fid){if(!exige('equipes'))return;if(!confirm('Excluir 
 function vPessoas(){
   const entraram=DB.pessoas.filter(x=>x.entrou).length;
   const comPush=recebendoPush();
-  let h=hero('Pessoas','Ordenados por quem serviu menos',
+  let h=hero('Pessoas','Ordenados por quem serviu menos neste mês',
     euPosso('pessoas')?'<button class="add" onclick="novaPessoa()">+</button>':'',
     DB.pessoas.length?numeros([[DB.pessoas.length,'voluntários'],[entraram,'já entraram'],
       [comPush,'com aviso']]):'');
@@ -1292,13 +1322,15 @@ function vPessoas(){
     +'Toque no + para cadastrar. Basta nome e telefone.</div>';
   /* calculado uma vez, fora do laco: dentro dele isto varria a lista inteira
      de escalas uma vez por pessoa, por pessoa */
-  const mc=mapaCarga();
-  const maxc=Math.max(1,...DB.pessoas.map(x=>mc.total[x.id]||0));
-  const ord=[...DB.pessoas].sort((a,b)=>mc.total[a.id]-mc.total[b.id]||a.nome.localeCompare(b.nome));
+  const ciclo=cicloAtual();
+  const mc=mapaCarga(inicioJanela(),ciclo);
+  const maxc=Math.max(1,...DB.pessoas.map(x=>mc.mes[x.id]||0));
+  const ord=[...DB.pessoas].sort((a,b)=>mc.mes[a.id]-mc.mes[b.id]
+    ||mc.janela[a.id]-mc.janela[b.id]||a.nome.localeCompare(b.nome));
   h+='<div class="card">';
   ord.forEach(p=>{const ts=p.teamIds.map(t=>{const x=team(t);return x&&x.nome;}).filter(Boolean).join(', ');
     const nInd=DB.indisp.filter(i=>i.pessoaId===p.id&&i.data>=hojeIso()).length;
-    const c=mc.total[p.id]||0;
+    const c=mc.mes[p.id]||0;
     const cor=c===0?'warn':(c>=maxc?'bad':'mut');
     h+='<div class="row" onclick="go(\'pessoa\',\''+p.id+'\')">'
      +'<div class="avatar"'+(temPainel(p)?' style="background:var(--brand-soft);color:var(--brand)"':'')+'>'
@@ -1306,8 +1338,9 @@ function vPessoas(){
      +'<div class="grow"><div class="t">'+esc(p.nome)
      +(temPainel(p)?' <span class="pill" style="font-size:10px;padding:2px 7px">líder</span>':'')+'</div>'
      +'<div class="s">'+esc(ts||'sem equipe')
+     +' &middot; '+(mc.total[p.id]||0)+' no total'
      +(nInd?' &middot; '+nInd+' dia(s) off':'')+'</div></div>'
-     +'<span class="pill '+cor+'">'+c+'x</span><span class="chev">&#8250;</span></div>';});
+     +'<span class="pill '+cor+'">'+c+'x no mês</span><span class="chev">&#8250;</span></div>';});
   return h+'</div>';
 }
 function vPessoa(id){
@@ -1596,8 +1629,8 @@ function vPerfil(){
    +'<div class="row" onclick="reportarErro()"><div class="grow"><div class="t">Reportar um problema</div>'
    +'<div class="s">Registra também a ficha técnica deste aparelho</div></div>'
    +'<span class="chev">&#8250;</span></div>'
-   +'<div class="row" onclick="relatorio()"><div class="grow"><div class="t">Relatório de carga</div>'
-   +'<div class="s">Quem está servindo demais ou de menos</div></div><span class="chev">&#8250;</span></div>'
+   +'<div class="row" onclick="relatorio()"><div class="grow"><div class="t">Carga do mês</div>'
+   +'<div class="s">Quem está servindo demais ou de menos neste mês</div></div><span class="chev">&#8250;</span></div>'
    +'<div class="row" onclick="exportar()"><div class="grow"><div class="t">Exportar backup</div>'
    +'<div class="s">Salva um arquivo .json com tudo</div></div><span class="chev">&#8250;</span></div>'
    +'<div class="row" onclick="document.getElementById(\'imp\').click()"><div class="grow"><div class="t">Importar backup</div>'
@@ -1641,26 +1674,41 @@ function respondo(aid,st){const a=DB.escalas.find(x=>x.id===aid);if(!a)return;
   a.status=a.status===st?'pendente':st;save();render();
   toast(a.status==='confirmado'?'Confirmado!':'Resposta removida');}
 function relatorio(){
-  /* a barra mostra a janela do rodizio, que e o numero que decide de fato
-     quem entra na proxima escala; o total da vida fica ao lado, como memoria */
-  const mc=mapaCarga(inicioJanela());
-  const jan=mc.janela, tot=mc.total;
-  const ord=[...DB.pessoas].sort((a,b)=>jan[b.id]-jan[a.id]||a.nome.localeCompare(b.nome));
-  const max=Math.max(1,...ord.map(p=>jan[p.id]));
-  let h='<p class="sub" style="margin:0 0 12px;padding:0">Escalas dos últimos '+JANELA_RODIZIO
-   +' dias mais as já marcadas para os próximos cultos. É por este número que o app '
-   +'escolhe quem entra primeiro &mdash; quem tem menos vai na frente.</p>'
-   +'<div class="card" style="margin:0">';
+  /* a barra mostra a conta do mes, que e a que decide quem entra na proxima
+     escala; a janela de 90 dias e o total ficam ao lado, como memoria */
+  const ciclo=cicloAtual();
+  const mc=mapaCarga(inicioJanela(),ciclo);
+  const mes=mc.mes, jan=mc.janela, tot=mc.total;
+  const ord=[...DB.pessoas].sort((a,b)=>mes[b.id]-mes[a.id]
+    ||jan[b.id]-jan[a.id]||a.nome.localeCompare(b.nome));
+  const max=Math.max(1,...ord.map(p=>mes[p.id]));
+  const soma=ord.reduce((n,p)=>n+mes[p.id],0);
+  const media=ord.length?(soma/ord.length):0;
+  let h='<p class="sub" style="margin:0 0 12px;padding:0">Escalas de <b>'+esc(nomeDoCiclo(ciclo))
+   +'</b>. A conta zera na virada do mês: dentro do mês todo mundo deve pegar o mesmo tanto, '
+   +'e é por este número que o app escolhe quem entra primeiro. Empate vai para quem serviu '
+   +'menos nos últimos '+JANELA_RODIZIO+' dias.</p>';
+  if(ord.length)h+='<div class="card" style="margin:0 0 12px;padding:13px 16px">'
+   +'<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:600">'
+   +'<span>Média do mês</span><span>'+(Math.round(media*10)/10)+' por pessoa</span></div>'
+   +'<div style="font-size:13px;color:var(--muted);margin-top:3px">'
+   +soma+' escala(s) distribuída(s) entre '+ord.length+' pessoa(s)</div></div>';
+  h+='<div class="card" style="margin:0">';
   if(!ord.length)h+='<div class="empty">Sem voluntários.</div>';
-  ord.forEach(p=>{const c=jan[p.id];
+  ord.forEach(p=>{const c=mes[p.id];
+    /* quem está mais de uma escala acima da média é o sinal de sobrecarga */
+    const pesado=ord.length>1&&c>=media+1&&c===max;
     h+='<div class="row" style="cursor:default"><div class="avatar">'+esc(ini(p.nome))+'</div>'
-     +'<div class="grow"><div class="t">'+esc(p.nome)+'</div>'
-     +'<div class="s">'+tot[p.id]+' no total</div>'
-     +'<div class="bar"><i style="width:'+Math.round(c/max*100)+'%"></i></div></div>'
+     +'<div class="grow"><div class="t">'+esc(p.nome)
+     +(pesado?' <span class="pill bad" style="font-size:10px;padding:2px 7px">mais carregada</span>':'')
+     +'</div>'
+     +'<div class="s">'+jan[p.id]+' nos últimos '+JANELA_RODIZIO+' dias &middot; '+tot[p.id]+' no total</div>'
+     +'<div class="bar"><i style="width:'+Math.round(c/max*100)+'%'
+     +(pesado?';background:var(--warn)':'')+'"></i></div></div>'
      +'<span class="pill'+(c?'':' mut')+'">'+c+'</span></div>';});
   h+='</div><p class="sub" style="font-size:12px;margin-top:10px;padding:0">'
    +'Convocações recusadas não entram na conta: recusar não é servir.</p>';
-  openSheet('Carga por pessoa',h,null);
+  openSheet('Carga do mês',h,null);
 }
 function exportar(){
   const b=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
@@ -3195,11 +3243,11 @@ function devoLembrarPush(){
   if(e.ok)return 'já recebe';
   if(e.cod==='sem-suporte')return 'navegador não suporta';
   if(!p.teamIds||!p.teamIds.length)return 'ainda não está em nenhuma equipe';
-  const m=lembreteLido();
-  if(m.nunca)return 'pediu para não lembrar';
-  const vezes=m.vezes||0;
-  const espera=(vezes<3?7:30)*DIA;
-  if(m.quando&&Date.now()-new Date(m.quando).getTime()<espera)return 'ainda no intervalo';
+  /* Sem intervalo e sem "não me lembre": enquanto a pessoa não estiver
+     recebendo, o aviso aparece em toda abertura do app. É a decisão da
+     liderança — quem não recebe notificação descobre a escala tarde, e o
+     custo disso cai sobre o time inteiro. Uma folha por abertura (JA_INTERROMPI)
+     continua valendo, para não empilhar com o convite da agenda. */
   return '';
 }
 
@@ -3229,7 +3277,6 @@ function lembrarPush(){
         +'abrindo o app para descobrir.',
       botao:'Ativar notificações', acao:'ativarPush()'};
 
-  const prox=(lembreteLido().vezes||1)<3?'daqui a uma semana':'daqui a um mês';
   const h='<p style="margin:0 0 14px;line-height:1.6">'+caso.texto+'</p>'
    +'<div class="card" style="margin:0 0 16px">'
    +linhaAg('sino','Entrou numa escala','No mesmo dia em que o líder monta.')
@@ -3239,15 +3286,16 @@ function lembrarPush(){
    +'<button onclick="closeSheet();'+caso.acao+'">'+caso.botao+'</button><div class="gap"></div>'
    +'<button class="btn2" onclick="closeSheet()">Agora não</button>'
    +'<p class="sub" style="font-size:13px;text-align:center;margin-top:12px;line-height:1.6">'
-   +'Se você não fizer nada, eu lembro de novo '+prox+'.<br>'
-   +'<a href="#" onclick="naoLembrarPush();return false" style="color:var(--muted)">'
-   +'Prefiro não ser lembrado</a></p>';
+   +'Enquanto as notificações estiverem desligadas, este aviso aparece toda vez '
+   +'que você abrir o app.</p>';
   openSheet(caso.titulo,h,null);
   return true;
 }
 
+/* mantido apenas para limpar a marca antiga de quem pediu para não ser
+   lembrado na versão anterior; o app não oferece mais essa saída */
 function naoLembrarPush(){
-  const m=lembreteLido(); m.nunca=true; lembreteGrava(m);
+  const m=lembreteLido(); m.nunca=false; lembreteGrava(m);
   closeSheet();
   toast('Combinado. Está em Conta quando você quiser.');
 }
@@ -4366,6 +4414,7 @@ if(nuvemCfg()){
 }else{
   setTimeout(()=>{try{verificarBuracos();verificarTrocasParadas();render();}catch(e){}},300);
   setTimeout(()=>sincronizarPush(),500);
+  setTimeout(()=>{try{lembrarPush();}catch(e){}},1200);
 }
 
 /* Conexao: o navegador avisa quando cai e quando volta */
