@@ -94,6 +94,22 @@ drop policy if exists tr_criar on public.trocas;
 create policy tr_criar on public.trocas for insert
   with check (de_id = meu_perfil() or (pode('trocas') and eh_da_minha_igreja(de_id)));
 
+-- ---------- escalas: assumir troca, mas só dentro da igreja ----------
+-- O with_check desta política já barrava a gravação cruzada; o using ganha o
+-- mesmo escopo para a intenção ficar explícita na leitura.
+drop policy if exists es_troca on public.escalas;
+create policy es_troca on public.escalas for update
+  using (
+    evento_id in (select id from public.eventos where igreja_id = minha_igreja())
+    and exists (
+      select 1 from public.trocas t
+       where t.escala_id = escalas.id and t.status = 'aberta'
+    )
+  )
+  with check (
+    evento_id in (select id from public.eventos where igreja_id = minha_igreja())
+  );
+
 -- ---------- código de acesso único entre TODAS as igrejas ----------
 -- resgatar_convite() procura o código no banco inteiro. Com duas igrejas,
 -- dois códigos iguais colocariam a pessoa na igreja errada.
