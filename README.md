@@ -26,7 +26,7 @@ senão a sincronização daquela tabela para. O próprio app avisa em
 | `migracoes/migracao-info-culto.sql` | `eventos.obs` e `eventos.links` — a área de informações do culto (v1.2) |
 | `migracoes/migracao-multi-igreja.sql` | escopo de igreja nas políticas que só checavam permissão, e código de acesso único |
 | `migracoes/criar-igreja.sql` | script para criar um time novo, isolado, com o perfil de administrador dele |
-| `migracoes/migracao-codigos-acesso.sql` | validade e contagem de uso do código, `novo_codigo()` e `revogar_acessos()` (v1.3) |
+| `migracoes/migracao-codigos-acesso.sql` | contagem de uso do código, `novo_codigo()` e `revogar_acessos()` (v1.3). Código não vence: a coluna de validade existe, mas só é usada se alguém chamar `novo_codigo(perfil, dias)` |
 
 ## Testes
 

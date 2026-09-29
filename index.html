@@ -4543,7 +4543,9 @@ async function gerarNovoCodigo(pid){
     return toast('Novo código: '+c);
   }
   try{
-    const{data,error}=await SB.rpc('novo_codigo',{p_perfil:pid,p_dias:30});
+    /* sem prazo: a protecao aqui e poder trocar o codigo e derrubar
+       aparelhos, nao fazer a equipe correr atras de codigo vencido */
+    const{data,error}=await SB.rpc('novo_codigo',{p_perfil:pid,p_dias:null});
     if(error)throw new Error(error.message);
     await recarregarDoServidor();
     closeSheet(); render();

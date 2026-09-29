@@ -5,10 +5,17 @@
 -- saber se foi usado e não há como desconectar um aparelho perdido. Quem
 -- tiver o código de um administrador vira administrador.
 --
--- Este script adiciona validade e duas funções: uma para gerar um código
--- novo (invalidando o anterior) e outra para desconectar os aparelhos de
--- um perfil. Rode no SQL Editor antes de publicar a versão do app que usa
--- isso; o app avisa em Perfil → Diagnóstico da nuvem se faltar.
+-- Este script adiciona duas funções: uma para gerar um código novo
+-- (invalidando o anterior na hora) e outra para desconectar os aparelhos de
+-- um perfil — que é o que resolve celular perdido ou código que vazou.
+--
+-- Por decisão da liderança, código NÃO vence: os que já existem continuam
+-- valendo para sempre e os novos nascem sem prazo. A coluna de validade
+-- fica pronta caso um dia se queira um convite temporário: basta chamar
+-- novo_codigo(perfil, 30).
+--
+-- Rode no SQL Editor antes de publicar a versão do app que usa isso; o app
+-- avisa em Perfil → Diagnóstico da nuvem se faltar.
 -- ============================================================
 
 alter table public.perfis
@@ -16,11 +23,7 @@ alter table public.perfis
   add column if not exists codigo_expira_em timestamptz,
   add column if not exists codigo_usos       integer     not null default 0;
 
--- os códigos que já circulam ganham 30 dias a partir de agora, para ninguém
--- ficar de fora amanhã de manhã
-update public.perfis
-   set codigo_expira_em = now() + interval '30 days'
- where codigo_expira_em is null;
+-- Nada de backfill: os códigos que já circulam continuam sem prazo.
 
 -- ---------- resgatar: agora recusa código vencido e conta o uso ----------
 create or replace function public.resgatar_convite(p_codigo text)
@@ -49,7 +52,7 @@ begin
 end $function$;
 
 -- ---------- gerar um código novo (o anterior deixa de valer) ----------
-create or replace function public.novo_codigo(p_perfil uuid, p_dias integer default 30)
+create or replace function public.novo_codigo(p_perfil uuid, p_dias integer default null)
 returns text language plpgsql security definer set search_path to 'public' as $function$
 declare c text;
 begin
