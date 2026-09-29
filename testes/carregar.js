@@ -81,6 +81,8 @@ function carregar() {
     'recusarTroca', 'permutasPara', 'trocaDaEscala',
     // informacoes do culto
     'temInfo', 'urlOk',
+    // acesso
+    'validadeCodigo', 'podeMexerNoAcesso', 'novoCodigo',
     // nuvem
     'achatar', 'montar', 'diff', 'chaveDe', 'CHAVES', 'ORDEM', 'semNulo',
     'corteSync', 'dentroDaJanela', 'JANELA_SYNC_DIAS', 'TABELAS_JANELA',

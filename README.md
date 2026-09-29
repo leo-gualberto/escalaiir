@@ -24,6 +24,19 @@ senão a sincronização daquela tabela para. O próprio app avisa em
 | Script | O que adiciona |
 |---|---|
 | `migracoes/migracao-info-culto.sql` | `eventos.obs` e `eventos.links` — a área de informações do culto (v1.2) |
+| `migracoes/migracao-multi-igreja.sql` | escopo de igreja nas políticas que só checavam permissão, e código de acesso único |
+| `migracoes/criar-igreja.sql` | script para criar um time novo, isolado, com o perfil de administrador dele |
+| `migracoes/migracao-codigos-acesso.sql` | validade e contagem de uso do código, `novo_codigo()` e `revogar_acessos()` (v1.3) |
+
+## Testes
+
+```bash
+node testes/rodar.js
+```
+
+Sem dependências. Cobrem o rodízio (que é mensal: a conta zera na virada do mês),
+a sincronização por janela de 12 meses, a trava de edição simultânea e as trocas.
+Veja `testes/README.md`.
 
 ## Deploy
 

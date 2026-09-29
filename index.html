@@ -1359,7 +1359,7 @@ function vPessoa(id){
    +'<div><div class="fn">Código de acesso</div>'
    +'<div style="font-size:24px;font-weight:800;letter-spacing:3px;font-family:ui-monospace,monospace">'+esc(p.codigo)+'</div></div>'
    +'<div style="flex:1"></div>'
-   +'<button class="btn-sm" style="width:auto" onclick="convidar(\''+p.id+'\')">Enviar convite</button></div>'
+   +'<button class="btn-sm" style="width:auto" onclick="telaAcesso(\''+p.id+'\')">Acesso</button></div>'
    +'<div style="font-size:13px;color:var(--muted);margin-top:9px">'
    +(completo?'Entrou'+(p.entrou?' em '+fmt(p.entrou.slice(0,10)):'')+' &middot; '+esc(p.email)
        +(p.nascimento?' &middot; '+esc(idade(p.nascimento)):'')
@@ -2251,6 +2251,8 @@ function montar(dados){
     return{id:p.id,nome:p.nome,telefone:p.telefone||'',email:p.email||'',
       nascimento:p.nascimento||'',codigo:p.codigo,perms:p.perms||{},
       entrou:p.entrou_em||null,funcaoIds:fids,
+      /* quem manda na validade do codigo e o banco: o app so mostra */
+      codigoExpira:p.codigo_expira_em||null,codigoUsos:p.codigo_usos||0,
       teamIds:[...new Set(fids.map(fid=>equipeDaFuncao[fid]).filter(Boolean))]};
   });
   /* Nomes de quem o banco nao deixa este usuario ler por inteiro. Entram como
@@ -2522,6 +2524,7 @@ async function diagnosticoNuvem(){
       ['trocas','alerta_parada','migracao-troca-parada.sql'],
       ['eventos','alerta_buraco','migracao-alerta-buracos.sql'],
       ['eventos','obs','migracao-info-culto.sql'],
+      ['perfis','codigo_expira_em','migracao-codigos-acesso.sql'],
       ['escalas','avisos','push-1-banco.sql']]){
       const{error}=await SB.from(tab).select(col,{count:'exact',head:true});
       if(error)extras.push({obj:tab+'.'+col,arquivo,ok:false,msg:error.message});
@@ -2654,7 +2657,9 @@ async function nuvemConectar(codigo){
     if(codigo){
       NUVEM_PASSO='validando o código';
       const{error}=await SB.rpc('resgatar_convite',{p_codigo:codigo.toUpperCase().trim()});
-      if(error)throw new Error(error.message);
+      if(error)throw new Error(/vencido/i.test(error.message||'')
+        ?'Este código venceu. Peça um novo a quem cuida da escala.'
+        :error.message);
     }
 
     NUVEM_PASSO='baixando os dados';
@@ -4478,11 +4483,89 @@ function editarMeusDados(){
 /* ---- convites (lado do lider) ---- */
 function textoConvite(p){
   const org=(DB.config&&DB.config.igreja)||'nossa igreja';
+  const v=validadeCodigo(p);
   return 'Oi, '+p.nome.split(' ')[0]+'! Estamos usando o app da escala da '+org+'.\n\n'
    +'1. Abra: '+location.origin+location.pathname+'\n'
    +'2. Digite o seu código: '+p.codigo+'\n'
    +'3. Complete o seu cadastro (e-mail e data de nascimento).\n\n'
-   +'Ali você vê só a sua escala, confirma presença e marca os dias que não pode servir.';
+   +(v.quando?'O código vale até '+v.quando+'. Depois disso eu gero outro para você.\n\n':'')
+   +(temPainel(p)
+     ?'Você entra como liderança: monta escalas, cadastra gente e acompanha as trocas.'
+     :'Ali você vê só a sua escala, confirma presença e marca os dias que não pode servir.');
+}
+/* ---- validade do codigo de acesso -------------------------------------
+   O codigo e a senha da pessoa, e ate agora era eterno: quem tivesse o
+   codigo de um administrador virava administrador, para sempre. Agora ele
+   vence, da para gerar outro (o anterior morre na hora) e da para
+   desconectar aparelhos — util quando alguem troca ou perde o celular. */
+function validadeCodigo(p){
+  if(!p||!p.codigoExpira)return{cls:'mut',txt:'sem validade',quando:''};
+  const alvo=new Date(p.codigoExpira), falta=alvo.getTime()-Date.now();
+  const quando=String(alvo.getDate()).padStart(2,'0')+'/'+String(alvo.getMonth()+1).padStart(2,'0');
+  if(falta<=0)return{cls:'bad',txt:'vencido em '+quando,quando};
+  const dias=Math.ceil(falta/DIA);
+  if(dias<=3)return{cls:'warn',txt:'vence em '+dias+' dia'+(dias>1?'s':''),quando};
+  return{cls:'ok',txt:'vale até '+quando,quando};
+}
+function podeMexerNoAcesso(pid){return euPosso('pessoas')||pid===DB.sessao;}
+function telaAcesso(pid){
+  const p=pessoa(pid); if(!p)return;
+  if(!podeMexerNoAcesso(pid))return toast('Você não tem permissão para isso');
+  const v=validadeCodigo(p);
+  const usos=p.codigoUsos||0;
+  let h='<div class="card" style="margin:0 0 14px;padding:22px;text-align:center">'
+   +'<div style="font-size:34px;font-weight:800;letter-spacing:6px;font-family:ui-monospace,monospace">'
+   +esc(p.codigo)+'</div>'
+   +'<div style="margin-top:8px"><span class="pill '+v.cls+'">'+esc(v.txt)+'</span></div></div>'
+   +'<div class="card" style="margin:0 0 14px">'
+   +linhaDado('Usos do código',usos?usos+'x':'ainda não usado')
+   +linhaDado('Entrou no app',p.entrou?fmt(String(p.entrou).slice(0,10)):'ainda não')
+   +'</div>'
+   +'<button onclick="convidar(\''+p.id+'\')">Enviar convite pelo WhatsApp</button>'
+   +'<div class="gap"></div>'
+   +'<button class="btn2" onclick="gerarNovoCodigo(\''+p.id+'\')">Gerar novo código</button>'
+   +'<p style="font-size:13px;color:var(--muted);margin:8px 2px 0">O código atual deixa de '
+   +'funcionar na hora. Quem já está com o app aberto continua dentro.</p>'
+   +'<div class="gap"></div>'
+   +'<button class="btn2 btn-d" onclick="revogarAcessos(\''+p.id+'\')">Desconectar aparelhos</button>'
+   +'<p style="font-size:13px;color:var(--muted);margin:8px 2px 0">Para celular perdido ou '
+   +'trocado: derruba as sessões e exige o código de novo.</p>';
+  openSheet('Acesso de '+p.nome.split(' ')[0],h,null);
+}
+async function gerarNovoCodigo(pid){
+  const p=pessoa(pid); if(!p)return;
+  if(!podeMexerNoAcesso(pid))return toast('Você não tem permissão para isso');
+  if(!confirm('Gerar um código novo para '+p.nome+'? O código atual para de funcionar.'))return;
+  if(!naNuvem()){
+    const usados=new Set(DB.pessoas.map(x=>x.codigo));
+    let c; do{c=novoCodigo();}while(usados.has(c));
+    p.codigo=c; p.codigoUsos=0; save(); closeSheet(); render();
+    return toast('Novo código: '+c);
+  }
+  try{
+    const{data,error}=await SB.rpc('novo_codigo',{p_perfil:pid,p_dias:30});
+    if(error)throw new Error(error.message);
+    await recarregarDoServidor();
+    closeSheet(); render();
+    toast('Novo código: '+(data||'gerado'));
+  }catch(e){toast('Não consegui gerar: '+(e.message||e));}
+}
+async function revogarAcessos(pid){
+  const p=pessoa(pid); if(!p)return;
+  if(!podeMexerNoAcesso(pid))return toast('Você não tem permissão para isso');
+  const souEuMesmo=pid===DB.sessao;
+  if(!confirm(souEuMesmo
+    ?'Desconectar todos os aparelhos, inclusive este? Você vai precisar do código para voltar.'
+    :'Desconectar os aparelhos de '+p.nome+'? Ela precisará do código para entrar de novo.'))return;
+  if(!naNuvem())return toast('Isso só funciona com a nuvem ligada');
+  try{
+    const{data,error}=await SB.rpc('revogar_acessos',{p_perfil:pid});
+    if(error)throw new Error(error.message);
+    closeSheet();
+    if(souEuMesmo){DB.sessao=null;MOSTRA_CODIGO=true;save();PILHA.length=0;render();}
+    else{await recarregarDoServidor();render();}
+    toast((data||0)+' aparelho(s) desconectado(s)');
+  }catch(e){toast('Não consegui: '+(e.message||e));}
 }
 function convidar(pid){
   const p=pessoa(pid); const t=textoConvite(p);
@@ -4490,15 +4573,19 @@ function convidar(pid){
   else navigator.clipboard.writeText(t).then(()=>toast('Convite copiado'),()=>alert(t));
 }
 function listaConvites(){
-  let h='<p class="sub" style="margin:0 0 12px;padding:0">Cada pessoa entra com o próprio código. '
-   +'Toque para enviar o convite pronto no WhatsApp.</p><div class="card" style="margin:0">';
+  let h='<p class="sub" style="margin:0 0 12px;padding:0">Cada pessoa entra com o próprio código, '
+   +'que vence e pode ser trocado. Toque na pessoa para enviar o convite, gerar outro código '
+   +'ou desconectar aparelhos.</p><div class="card" style="margin:0">';
   if(!DB.pessoas.length)h+='<div class="empty">Nenhum voluntário cadastrado.</div>';
-  DB.pessoas.forEach(p=>{const ok=p.email&&p.nascimento;
-    h+='<div class="row" onclick="convidar(\''+p.id+'\')"><div class="avatar">'+esc(ini(p.nome))+'</div>'
+  DB.pessoas.forEach(p=>{const ok=p.email&&p.nascimento; const v=validadeCodigo(p);
+    h+='<div class="row" onclick="telaAcesso(\''+p.id+'\')"><div class="avatar">'+esc(ini(p.nome))+'</div>'
      +'<div class="grow"><div class="t">'+esc(p.nome)+(temPainel(p)?' <span class="pill">líder</span>':'')+'</div>'
      +'<div class="s">'+(ok?'cadastro completo':(p.entrou?'entrou, falta completar':'ainda não entrou'))
-     +((p.push&&(p.push.endpoint||p.push.local))?' &middot; &#128276;':'')+'</div></div>'
-     +'<span class="pill" style="font-family:ui-monospace,monospace;letter-spacing:1px">'+esc(p.codigo)+'</span></div>';});
+     +((p.push&&(p.push.endpoint||p.push.local))?' &middot; &#128276;':'')+'</div>'
+     +'<div class="s"><span class="pill '+v.cls+'" style="font-size:11px;padding:1px 7px">'
+     +esc(v.txt)+'</span></div></div>'
+     +'<span class="pill" style="font-family:ui-monospace,monospace;letter-spacing:1px">'+esc(p.codigo)+'</span>'
+     +'<span class="chev">&#8250;</span></div>';});
   openSheet('Convites e códigos',h+'</div>',null);
 }
 

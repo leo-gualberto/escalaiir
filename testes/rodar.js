@@ -358,6 +358,34 @@ teste('informações do culto só existem quando há conteúdo', () => {
   ok(app.urlOk('https://exemplo.com'));
 });
 
+/* ---------- código de acesso ---------- */
+
+teste('validade do código de acesso', () => {
+  const emDias = n => new Date(Date.now() + n * 86400000).toISOString();
+  igual(app.validadeCodigo({}).cls, 'mut', 'sem data é sem validade');
+  igual(app.validadeCodigo({ codigoExpira: emDias(-1) }).cls, 'bad', 'ontem já venceu');
+  igual(app.validadeCodigo({ codigoExpira: emDias(2) }).cls, 'warn', 'dois dias é alerta');
+  igual(app.validadeCodigo({ codigoExpira: emDias(20) }).cls, 'ok');
+  ok(app.validadeCodigo({ codigoExpira: emDias(20) }).quando.indexOf('/') > 0, 'mostra a data');
+});
+
+teste('quem pode mexer no acesso de alguém', () => {
+  const db = mundo();
+  db.pessoas[1].perms = {};            // Bia é voluntária
+  usar(db);
+  db.sessao = BIA; db.meuId = BIA;
+  ok(app.podeMexerNoAcesso(BIA), 'a própria pessoa pode');
+  ok(!app.podeMexerNoAcesso(ANA), 'voluntária não mexe no acesso de outra');
+  db.sessao = ANA; db.meuId = ANA;     // Ana é admin
+  ok(app.podeMexerNoAcesso(BIA), 'quem cuida de pessoas pode');
+});
+
+teste('código gerado localmente tem o formato esperado', () => {
+  const c = app.novoCodigo();
+  igual(c.length, 6);
+  ok(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/.test(c), 'sem letras que se confundem: ' + c);
+});
+
 /* ---------- execução ---------- */
 for (const [nome, fn] of casos) {
   try { fn(); passou++; console.log('  ok   ' + nome); }
