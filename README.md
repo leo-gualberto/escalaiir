@@ -27,7 +27,14 @@ senão a sincronização daquela tabela para. O próprio app avisa em
 
 ## Deploy
 
-Deploy no Netlify a partir da raiz do repositório (site estático, sem build).
+Dois destinos, ambos a partir da branch `main` deste repositório, sem etapa de build:
+
+| Endereço | Onde | Como |
+|---|---|---|
+| `tecnica.escalaiir.com` | Cloudflare Worker `wispy-base-2c74` (só arquivos estáticos) | Workers Builds: cada push roda `npx wrangler deploy` com a configuração de `wrangler.jsonc` |
+| `escalaiir.netlify.app` | Netlify (projeto `escalaiir`) | Deploy contínuo do `main`, sem build command, publish na raiz |
+
+O `.assetsignore` mantém README, migrações e metadados do Git fora do site publicado.
 
 ## Histórico
 
