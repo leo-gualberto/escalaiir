@@ -1194,23 +1194,64 @@ function editarEvento(id){if(!exige('eventos'))return;const ev=evento(id);
     ev.titulo=val('fTit')||ev.titulo;ev.data=val('fData');ev.hora=val('fHora');
     const{teamIds,chegadas}=lerEquipesEvento();ev.teamIds=teamIds;ev.chegadas=chegadas;save();});
 }
+/* primeiro dia da semana pedido que cai NA data escolhida ou depois dela */
+function primeiroDiaDaSemana(baseIso,dow){
+  const d=pd(baseIso&&/^\d{4}-\d{2}-\d{2}$/.test(baseIso)?baseIso:hojeIso());
+  d.setDate(d.getDate()+((dow-d.getDay()+7)%7));
+  return d;
+}
+/* as datas que a recorrencia vai criar, sem as que ja existem com o mesmo
+   titulo e horario: repetir "Criar vários cultos" sem querer era a forma
+   mais facil de duplicar o mes inteiro */
+function datasRecorrentes(baseIso,dow,qtd,titulo,hora){
+  const inicio=primeiroDiaDaSemana(baseIso,dow), novas=[], repetidas=[];
+  for(let i=0;i<qtd;i++){
+    const x=new Date(inicio); x.setDate(x.getDate()+i*7);
+    const data=iso(x);
+    const ja=DB.eventos.some(e=>e.data===data&&e.hora===hora&&e.titulo===titulo);
+    (ja?repetidas:novas).push(data);
+  }
+  return{novas,repetidas};
+}
+function previaRecorrentes(){
+  const alvo=document.getElementById('rPrev'); if(!alvo)return;
+  const dow=+val('rDow')||0, qtd=Math.min(52,Math.max(1,+val('rQtd')||8));
+  const r=datasRecorrentes(val('rIni'),dow,qtd,val('rTit')||'Culto',val('rHora')||'19:00');
+  const todas=r.novas.concat(r.repetidas).sort();
+  alvo.innerHTML='<b>'+r.novas.length+' culto(s)</b> de '+fmtLong(todas[0])
+   +' a '+fmtLong(todas[todas.length-1])
+   +(r.repetidas.length?'<br><span style="color:var(--warn);font-weight:600">'
+     +r.repetidas.length+' data(s) já têm esse culto e serão puladas</span>':'');
+}
 function eventosRecorrentes(){
   if(!exige('eventos'))return;
-  let h='<label>Título</label><input id="rTit" value="Culto de Domingo">'
-  +'<label>Dia da semana</label><select id="rDow">'+DOW.map((d,i)=>'<option value="'+i+'"'+(i===0?' selected':'')+'>'+d+'</option>').join('')+'</select>'
-  +'<label>Horário</label><input id="rHora" type="time" value="19:00">'
-  +'<label>Quantas semanas</label><input id="rQtd" type="number" value="8" min="1" max="52">'
+  let h='<label>Título</label><input id="rTit" value="Culto de Domingo" oninput="previaRecorrentes()">'
+  +'<label>Dia da semana</label><select id="rDow" onchange="previaRecorrentes()">'
+  +DOW.map((d,i)=>'<option value="'+i+'"'+(i===0?' selected':'')+'>'+d+'</option>').join('')+'</select>'
+  +'<label>A partir de</label>'
+  +'<input id="rIni" type="date" value="'+hojeIso()+'" oninput="previaRecorrentes()">'
+  +'<p style="font-size:13px;color:var(--muted);margin:-4px 0 14px">O primeiro culto cai no '
+  +'dia da semana escolhido, nesta data ou na primeira vez que ele acontecer depois dela.</p>'
+  +'<label>Horário</label><input id="rHora" type="time" value="19:00" oninput="previaRecorrentes()">'
+  +'<label>Quantas semanas</label>'
+  +'<input id="rQtd" type="number" value="8" min="1" max="52" oninput="previaRecorrentes()">'
+  +'<div class="card" style="margin:0 0 14px;padding:13px 16px">'
+  +'<div class="fn">Vai criar</div><div id="rPrev" style="font-size:15px;margin-top:3px"></div></div>'
   +'<label>Equipes</label><div class="chips" id="rTeams">'
   +DB.teams.map(t=>'<button class="chip on" data-id="'+t.id+'" onclick="this.classList.toggle(\'on\')">'+esc(t.nome)+'</button>').join('')+'</div>';
-  openSheet('Criar varios cultos',h,()=>{
-    const dow=+val('rDow'),qtd=Math.min(52,+val('rQtd')||8),ts=chipsSel('rTeams');
-    const hora=val('rHora')||'19:00';
+  openSheet('Criar vários cultos',h,()=>{
+    const dow=+val('rDow'),qtd=Math.min(52,Math.max(1,+val('rQtd')||8)),ts=chipsSel('rTeams');
+    const hora=val('rHora')||'19:00', titulo=val('rTit')||'Culto';
     const ch={}; ts.forEach(tid=>{const t=team(tid);
       ch[tid]=menosMin(hora,t.antecedencia==null?30:t.antecedencia);});
-    const d=new Date();d.setDate(d.getDate()+((dow-d.getDay()+7)%7));
-    for(let i=0;i<qtd;i++){const x=new Date(d);x.setDate(x.getDate()+i*7);
-      DB.eventos.push({id:uid(),titulo:val('rTit')||'Culto',data:iso(x),hora,teamIds:ts,chegadas:{...ch}});}
-    save();toast(qtd+' eventos criados');});
+    const r=datasRecorrentes(val('rIni'),dow,qtd,titulo,hora);
+    if(!r.novas.length){toast('Esses cultos já existem');return false;}
+    r.novas.forEach(data=>{
+      DB.eventos.push({id:uid(),titulo,data,hora,teamIds:ts,chegadas:{...ch},obs:'',links:[]});});
+    save();
+    toast(r.novas.length+' culto(s) criado(s)'
+      +(r.repetidas.length?' · '+r.repetidas.length+' já existia(m)':''));});
+  setTimeout(previaRecorrentes,60);
 }
 
 /* ============ ABA: EQUIPES ============ */

@@ -110,6 +110,37 @@ teste('escala automática preserva o que já estava escalado', () => {
   ok(escaladoEm(db, TEC) === ANA, 'a vaga vazia deveria ser preenchida');
 });
 
+/* ---------- cultos recorrentes ---------- */
+
+teste('a recorrência começa na data escolhida', () => {
+  /* 2027-03-03 é uma quarta. Pedindo domingo (0), o primeiro cai em 07/03. */
+  igual(app.iso(app.primeiroDiaDaSemana('2027-03-03', 0)), '2027-03-07');
+  /* se a própria data já é o dia da semana pedido, começa nela mesma */
+  igual(app.iso(app.primeiroDiaDaSemana('2027-03-07', 0)), '2027-03-07');
+  /* quarta (3) a partir de uma quinta cai só na semana seguinte */
+  igual(app.iso(app.primeiroDiaDaSemana('2027-03-04', 3)), '2027-03-10');
+  /* data inválida não quebra: cai para hoje */
+  ok(/^\d{4}-\d{2}-\d{2}$/.test(app.iso(app.primeiroDiaDaSemana('', 0))));
+});
+
+teste('a recorrência gera semanas seguidas e pula o que já existe', () => {
+  const db = mundo();
+  db.eventos = [Object.assign(evento(E1, '2027-03-14'), { hora: '19:00', titulo: 'Culto' })];
+  usar(db);
+  const r = app.datasRecorrentes('2027-03-01', 0, 4, 'Culto', '19:00');
+  igual(r.novas, ['2027-03-07', '2027-03-21', '2027-03-28'], 'quatro domingos menos o que já existe');
+  igual(r.repetidas, ['2027-03-14'], 'o culto de 14/03 já estava lá');
+});
+
+teste('a recorrência não pula um culto com horário diferente no mesmo dia', () => {
+  const db = mundo();
+  db.eventos = [Object.assign(evento(E1, '2027-03-07'), { hora: '09:00', titulo: 'Culto' })];
+  usar(db);
+  const r = app.datasRecorrentes('2027-03-01', 0, 2, 'Culto', '19:00');
+  igual(r.repetidas, [], 'culto da manhã e culto da noite são cultos diferentes');
+  igual(r.novas.length, 2);
+});
+
 /* ---------- rodízio ---------- */
 
 teste('carga ignora convocação recusada', () => {

@@ -72,6 +72,7 @@ function carregar() {
     'chegada', 'ausente', 'indisponivel', 'ausenciaEm', 'diasDoPeriodo', 'diasBloqueados',
     // escala
     'slotsDoEvento', 'escalaDe', 'candidatos', 'gerarEscala', 'definir', 'statusEvento',
+    'primeiroDiaDaSemana', 'datasRecorrentes',
     'carga', 'cargaJanela', 'cargaCiclo', 'cicloDe', 'cicloAtual', 'nomeDoCiclo',
     'mapaCarga', 'inicioJanela', 'ultimaVez', 'textoWhats',
     // permissoes
