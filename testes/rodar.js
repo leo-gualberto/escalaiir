@@ -464,6 +464,52 @@ teste('a permuta proposta ao assumir fecha as duas pontas quando aceita', () => 
   igual(app.trocasAbertas().length, 0, 'nenhum pedido ficou aberto');
 });
 
+/* ---------- pedidos de culto que já passou ---------- */
+
+teste('pedido de culto que já passou é fechado e some do mural', () => {
+  const db = mundo();
+  db.eventos = [evento(E1, diaRelativo(-2)), evento(E0, diaRelativo(7))];
+  db.escalas = [escala(A1, E1, VOZ, ANA), escala(A2, E0, VOZ, ANA)];
+  usar(db);
+  db.trocas = [
+    { id: ID(200), escalaId: A1, deId: ANA, paraId: null, motivo: '', status: 'aberta' },
+    { id: ID(201), escalaId: A2, deId: ANA, paraId: null, motivo: '', status: 'aberta' }
+  ];
+  db.avisos = [{ id: ID(210), paraId: BIA, texto: 'x', tipo: 'troca', ref: ID(200), lido: false,
+                 quando: new Date().toISOString() }];
+  ok(app.trocaVencida(db.trocas[0]), 'o culto de anteontem já passou');
+  ok(!app.trocaVencida(db.trocas[1]), 'o da semana que vem não');
+
+  igual(app.expirarTrocas(), 1, 'um pedido expirou');
+  igual(db.trocas[0].status, 'expirada');
+  igual(db.trocas[1].status, 'aberta', 'o pedido futuro continua valendo');
+  igual(app.trocasAbertas().length, 1, 'só o futuro fica no mural');
+  ok(db.avisos[0].lido, 'o convite daquele pedido para de cobrar atenção');
+  igual(app.expirarTrocas(), 0, 'rodar de novo não mexe em nada');
+});
+
+teste('permuta presa a um pedido que expirou expira junto', () => {
+  const db = mundo();
+  db.eventos = [evento(E1, diaRelativo(-1)), evento(E0, diaRelativo(10))];
+  db.escalas = [escala(A1, E1, VOZ, ANA), escala(A2, E0, VOZ, BIA)];
+  usar(db);
+  db.trocas = [
+    { id: ID(220), escalaId: A1, deId: ANA, paraId: null, motivo: '', status: 'aberta' },
+    { id: ID(221), escalaId: A2, deId: BIA, paraId: ANA, motivo: '', status: 'aberta',
+      permutaDe: ID(220) }
+  ];
+  igual(app.expirarTrocas(), 2, 'o pedido vencido e a permuta amarrada a ele');
+  igual(db.trocas[1].status, 'expirada', 'sem a outra ponta a permuta não fecha');
+});
+
+teste('pedido sem escala correspondente também sai do mural', () => {
+  const db = mundo();
+  usar(db);
+  db.trocas = [{ id: ID(230), escalaId: ID(999), deId: ANA, paraId: null, motivo: '',
+                 status: 'aberta' }];
+  igual(app.expirarTrocas(), 1, 'pedido órfão não tem vaga para assumir');
+});
+
 /* ---------- informações do culto ---------- */
 
 teste('informações do culto só existem quando há conteúdo', () => {

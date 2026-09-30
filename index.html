@@ -2011,6 +2011,38 @@ function repararTrocas(){
   if(n)save();
   return n;
 }
+/* ---- pedidos de culto que ja passou ------------------------------------
+   Pedido de troca de um domingo que ja foi nao e pedido: e entulho. Ficava
+   no mural, contava na bolinha da aba e escondia o que ainda da para
+   resolver. Na abertura do app, e ao abrir a tela de Trocas, esses pedidos
+   sao fechados como 'expirada' — some para todo mundo, e a contagem volta a
+   dizer a verdade.
+   Uma permuta amarrada a um pedido que expirou vai junto: sem a outra ponta
+   ela nao tem como fechar. */
+function trocaVencida(t){
+  const a=escalaPorId(t.escalaId);
+  if(!a)return true;                       /* escala sumiu: nao ha o que assumir */
+  const e=evento(a.eventoId);
+  return !e||e.data<hojeIso();
+}
+function expirarTrocas(){
+  let n=0;
+  const fechar=t=>{
+    t.status='expirada';
+    t.respondida=t.respondida||new Date().toISOString();
+    DB.avisos.forEach(x=>{if(x.ref===t.id&&x.tipo==='troca')x.lido=true;});
+    n++;
+  };
+  DB.trocas.forEach(t=>{ if(t.status==='aberta'&&trocaVencida(t))fechar(t); });
+  /* segunda passada: propostas presas a um pedido que acabou de expirar */
+  DB.trocas.forEach(t=>{
+    if(t.status!=='aberta'||!t.permutaDe)return;
+    const base=DB.trocas.find(x=>x.id===t.permutaDe);
+    if(!base||base.status!=='aberta')fechar(t);
+  });
+  if(n)save();
+  return n;
+}
 function trocaCompleta(t){
   if(!t)return false;
   const a=escalaPorId(t.escalaId); if(!a)return false;
@@ -4307,6 +4339,7 @@ const vDisp=vAgenda;
 
 /* ============ TELA DE TROCAS ============ */
 function vTrocas(){
+  expirarTrocas();
   const me=pessoa(DB.sessao), painel=temPainel(me);
   const paraMim=trocasParaMim();
   const meusPedidos=trocasAbertas().filter(t=>t.deId===me.id);
@@ -4736,7 +4769,7 @@ function listaConvites(){
 if(nuvemCfg()){
   NUVEM_ESTADO='ligando';
   nuvemConectar(null)
-    .then(()=>{repararTrocas();verificarBuracos();verificarTrocasParadas();
+    .then(()=>{repararTrocas();expirarTrocas();verificarBuracos();verificarTrocasParadas();
       return sincronizarPush();})
     /* as interrupções vêm depois de tudo assentar: aparecer por cima de uma
        tela ainda carregando assusta mais do que convida. O convite da agenda
@@ -4750,7 +4783,7 @@ if(nuvemCfg()){
     },1200))
     .catch(()=>{NUVEM_ESTADO='erro';render();});
 }else{
-  setTimeout(()=>{try{verificarBuracos();verificarTrocasParadas();render();}catch(e){}},300);
+  setTimeout(()=>{try{expirarTrocas();verificarBuracos();verificarTrocasParadas();render();}catch(e){}},300);
   setTimeout(()=>sincronizarPush(),500);
   setTimeout(()=>{try{lembrarPush();}catch(e){}},1200);
 }
