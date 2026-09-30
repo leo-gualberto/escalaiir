@@ -57,14 +57,23 @@ function carregar() {
     clipboard: { writeText: async () => {} },
     serviceWorker: undefined, setAppBadge: undefined
   };
-  let semente = 1;
+  /* ids previsíveis, mas nunca repetidos: um uid() que devolve sempre o mesmo
+     UUID faz dois registros virarem um só, e o teste falha por um motivo que
+     não existe no app. */
+  let semente = 0;
   const cripto = {
     randomUUID() {
-      const n = (semente++).toString(16).padStart(12, '0');
+      semente++;
+      const n = semente.toString(16).padStart(12, '0');
       return '00000000-0000-4000-8000-' + n;
     },
-    getRandomValues(a) { for (let i = 0; i < a.length; i++) a[i] = (semente * 7 + i) % 256; return a; }
+    getRandomValues(a) {
+      semente++;
+      for (let i = 0; i < a.length; i++) a[i] = (semente * 31 + i * 7) % 256;
+      return a;
+    }
   };
+  janela.crypto = cripto;   /* o app procura crypto em self/window antes do global */
 
   const nomes = [
     // modelo e utilidades
@@ -79,7 +88,8 @@ function carregar() {
     'pode', 'ehAdmin', 'temPainel',
     // trocas
     'podeAssumir', 'trocaCompleta', 'trocasAbertas', 'pedirTroca', 'aceitarTroca',
-    'recusarTroca', 'permutasPara', 'trocaDaEscala',
+    'recusarTroca', 'permutasPara', 'trocaDaEscala', 'permutasAoAssumir',
+    'pedirPermuta', 'minhasEscalas', 'vejoContatos', 'telE164', 'temTelefone',
     // informacoes do culto
     'temInfo', 'urlOk',
     // acesso

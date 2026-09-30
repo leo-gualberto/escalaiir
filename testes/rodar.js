@@ -379,6 +379,83 @@ teste('troca aceita muda o dono da vaga', () => {
   igual(app.trocasAbertas().length, 0, 'o pedido saiu do mural');
 });
 
+/* ---------- contato na tela do culto ---------- */
+
+teste('quem enxerga o contato de quem serve', () => {
+  const db = mundo();
+  db.pessoas[1].perms = {};                      // Bia é voluntária
+  db.pessoas[2].perms = {};                      // Caio é voluntário
+  db.escalas = [escala(A1, E1, VOZ, BIA)];       // só a Bia serve neste culto
+  usar(db);
+  const ev = db.eventos[0];
+  db.sessao = ANA; db.meuId = ANA;
+  ok(app.vejoContatos(ev), 'a liderança vê');
+  db.sessao = BIA; db.meuId = BIA;
+  ok(app.vejoContatos(ev), 'quem está escalado no culto vê');
+  db.sessao = CAIO; db.meuId = CAIO;
+  ok(!app.vejoContatos(ev), 'quem não serve neste culto não vê');
+});
+
+teste('telefone vira número de WhatsApp', () => {
+  igual(app.telE164('(61) 99999-8888'), '5561999998888');
+  igual(app.telE164('5561999998888'), '5561999998888');
+  igual(app.telE164('99998888'), '', 'sem DDD não dá para montar o link');
+  ok(!app.temTelefone({ telefone: '' }));
+  ok(app.temTelefone({ telefone: '61 99999-8888' }));
+});
+
+/* ---------- troca casada ---------- */
+
+teste('ao assumir, aparecem as minhas datas que a outra pessoa pode cobrir', () => {
+  const db = mundo();
+  db.eventos = [evento(E1, diaRelativo(7)), evento(E0, diaRelativo(14))];
+  db.escalas = [escala(A1, E1, VOZ, ANA),    // Ana pede troca desta
+                escala(A2, E0, VOZ, BIA)];   // Bia serve na outra data
+  usar(db);
+  db.sessao = ANA; db.meuId = ANA;
+  app.pedirTroca(A1, null, 'compromisso');
+  const t = app.trocasAbertas()[0];
+  db.sessao = BIA; db.meuId = BIA;
+  const opcoes = app.permutasAoAssumir(t.id, BIA);
+  igual(opcoes.length, 1, 'a data da Bia serve para a Ana');
+  igual(opcoes[0].a.id, A2);
+});
+
+teste('sem casamento possível, não há o que oferecer', () => {
+  const db = mundo();
+  db.eventos = [evento(E1, diaRelativo(7)), evento(E0, diaRelativo(14))];
+  db.escalas = [escala(A1, E1, VOZ, ANA), escala(A2, E0, TEC, BIA)];
+  db.pessoas[0].funcaoIds = [VOZ];            // Ana não faz teclado
+  usar(db);
+  db.sessao = ANA; db.meuId = ANA;
+  app.pedirTroca(A1, null, '');
+  const t = app.trocasAbertas()[0];
+  db.sessao = BIA; db.meuId = BIA;
+  igual(app.permutasAoAssumir(t.id, BIA).length, 0, 'a Ana não cobre a função da Bia');
+});
+
+teste('a permuta proposta ao assumir fecha as duas pontas quando aceita', () => {
+  const db = mundo();
+  db.eventos = [evento(E1, diaRelativo(7)), evento(E0, diaRelativo(14))];
+  db.escalas = [escala(A1, E1, VOZ, ANA), escala(A2, E0, VOZ, BIA)];
+  usar(db);
+  db.sessao = ANA; db.meuId = ANA;
+  app.pedirTroca(A1, null, 'viagem');
+  const pedido = app.trocasAbertas()[0];
+
+  db.sessao = BIA; db.meuId = BIA;              // Bia propõe trocar de data
+  app.pedirPermuta(A2, pedido.id, '');
+  const proposta = app.trocasAbertas().find(x => x.permutaDe === pedido.id);
+  ok(proposta, 'a proposta foi criada amarrada ao pedido');
+  igual(proposta.paraId, ANA, 'a proposta vai para quem pediu a troca');
+
+  db.sessao = ANA; db.meuId = ANA;              // Ana aceita
+  app.aceitarTroca(proposta.id, ANA);
+  igual(db.escalas.find(a => a.id === A1).pessoaId, BIA, 'Bia ficou com a data da Ana');
+  igual(db.escalas.find(a => a.id === A2).pessoaId, ANA, 'Ana ficou com a data da Bia');
+  igual(app.trocasAbertas().length, 0, 'nenhum pedido ficou aberto');
+});
+
 /* ---------- informações do culto ---------- */
 
 teste('informações do culto só existem quando há conteúdo', () => {

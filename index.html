@@ -815,6 +815,7 @@ const ICONES={
   relogio:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M12 7v5.2l3.2 2',
   check:'M4.5 12.8 9.5 18 19.5 6.5',
   info:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M12 11v6 M12 7.5h.01',
+  conversa:'M12 4.5c-4.2 0-7.6 2.9-7.6 6.4 0 1.9 1 3.7 2.7 4.9L6.2 19.5l3.9-1.7c.6.1 1.2.2 1.9.2 4.2 0 7.6-2.9 7.6-6.4S16.2 4.5 12 4.5Z',
   triste:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M8.5 16c.9-1.3 2.1-2 3.5-2s2.6.7 3.5 2 M9 9.5h.01 M15 9.5h.01'
 };
 function ico(nome,tam,cor){
@@ -956,6 +957,7 @@ function vEvento(id){
     +((euPosso('escalas')&&usaWhats())?'<div class="pad" style="margin-bottom:6px">'
       +'<button class="btn2 btn-sm" style="width:100%" onclick="avisarEvento(\''+ev.id+'\',\'convocacao\')">'
       +'Avisar no WhatsApp quem foi escalado</button></div>':'');
+  const verContato=vejoContatos(ev);
   ev.teamIds.forEach(tid=>{const t=team(tid); if(!t)return;
     const ch=chegada(ev,tid);
     h+='<div class="teamhead"><span class="dot" style="background:'+t.cor+'"></span>'
@@ -972,7 +974,18 @@ function vEvento(id){
         +'<div class="avatar" style="'+(p?'background:'+t.cor+'22;color:'+t.cor:'background:var(--warn-soft);color:var(--warn)')+'">'
         +(p?esc(ini(p.nome)):'+')+'</div>'
         +'<div class="grow"><div class="fn">'+esc(f.nome)+'</div>'
-        +'<div class="nm'+(p?'':' vazio')+'">'+(p?esc(p.nome):'Toque para escalar')+'</div></div>'+st+'</div>';}});
+        +'<div class="nm'+(p?'':' vazio')+'">'+(p?esc(p.nome):'Toque para escalar')+'</div>'
+        +((p&&verContato&&p.telefone)
+          ?'<div style="font-size:12.5px;color:var(--muted);margin-top:1px">'+esc(p.telefone)+'</div>'
+          :'')
+        +'</div>'+st
+        +((p&&verContato&&temTelefone(p))
+          ?'<button class="btn2 btn-sm" style="width:auto;flex:none;padding:7px 10px;margin-left:2px" '
+           +'title="Chamar no WhatsApp" aria-label="Chamar '+esc(p.nome)+' no WhatsApp" '
+           +'onclick="event.stopPropagation();falarComEscalado(\''+a.id+'\')">'
+           +ico('conversa',17)+'</button>'
+          :'')
+        +'</div>';}});
     h+='</div>';});
   if(euPosso('eventos'))
     h+='<div class="gap"></div><div class="pad"><button class="btn2" onclick="editarEvento(\''+ev.id+'\')">Editar evento</button>'
@@ -1136,6 +1149,27 @@ function definirUI(evId,tid,fid,idx,pid){
   definir(ev,tid,fid,idx,pid||null);closeSheet();render();
 }
 function marcar(aid,st){const a=DB.escalas.find(x=>x.id===aid);if(a){a.status=st;save();}closeSheet();render();}
+
+/* ---- contato de quem serve -------------------------------------------
+   Domingo 18h55 e o vocal nao chegou: quem esta no culto precisa do telefone
+   na mao, nao de uma busca em Pessoas. Veem o contato a lideranca e quem
+   esta escalado no MESMO culto — que sao as pessoas que precisam combinar
+   atraso e substituicao no dia. Para os demais, a tela segue como era. */
+function vejoContatos(ev){
+  if(!ev)return false;
+  if(euPosso('escalas')||euPosso('pessoas')||euPosso('trocas'))return true;
+  return DB.escalas.some(a=>a.eventoId===ev.id&&a.pessoaId===DB.sessao);
+}
+function falarComEscalado(escalaId){
+  const a=escalaPorId(escalaId); if(!a)return;
+  const p=pessoa(a.pessoaId), ev=evento(a.eventoId); if(!p||!ev)return;
+  const num=telE164(p.telefone);
+  if(!num)return toast(p.nome.split(' ')[0]+' está sem telefone cadastrado');
+  const f=funcao(a.teamId,a.funcaoId);
+  const txt='Oi, '+p.nome.split(' ')[0]+'! Sobre o '+ev.titulo+' de '+fmt(ev.data)+': '
+   +'você está em '+(f?f.nome:'')+' e a chegada é às '+chegada(ev,a.teamId)+'. Tudo certo?';
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(txt),'_blank');
+}
 
 /* --- evento --- */
 function formEvento(ev){
@@ -4429,7 +4463,51 @@ async function aceitarTrocaNaNuvem(tid){
     return data||{ok:false,motivo:'sem resposta'};
   }catch(e){return {erro:e.message||String(e)};}
 }
-async function aceitarTrocaUI(tid){
+/* ---- troca casada na hora de assumir ----------------------------------
+   Quem se oferece para cobrir quase sempre tambem esta escalado noutro dia.
+   Antes era preciso assumir primeiro e abrir outro pedido depois, torcendo
+   para alguem pegar. Agora, no momento de assumir, o app mostra as SUAS
+   datas que a pessoa do pedido poderia cobrir: um rende o outro.
+   Ela confirma — ninguem e escalado sem aceitar —, e se nao houver
+   casamento possivel a tela nem aparece: assume e pronto. */
+function permutasAoAssumir(tid,pid){
+  const t=DB.trocas.find(x=>x.id===tid);
+  if(!t||t.status!=='aberta'||t.permutaDe)return [];
+  if(t.deId===pid)return [];
+  return minhasEscalas(pid).filter(x=>
+    x.a.id!==t.escalaId&&!trocaDaEscala(x.a.id)&&podeAssumir({escalaId:x.a.id},t.deId));
+}
+function aceitarTrocaUI(tid){
+  const t=DB.trocas.find(x=>x.id===tid); if(!t)return;
+  const opcoes=permutasAoAssumir(tid,DB.sessao);
+  if(!opcoes.length)return confirmarAssumir(tid);
+  const de=pessoa(t.deId), primeiro=de.nome.split(' ')[0];
+  let h='<p class="sub" style="margin:0 0 14px;padding:0">Você vai assumir o '
+   +esc(descTroca(t))+' de '+esc(de.nome)+'.</p>'
+   +'<div class="sec-t" style="margin:0 0 4px">Trocar de data, em vez de só pegar a dela</div>'
+   +'<p class="sub" style="margin:0 0 10px;padding:0;font-size:13px">Escolha uma das suas datas '
+   +'abaixo e '+esc(primeiro)+' assume ela no seu lugar. Uma rende a outra. '
+   +esc(primeiro)+' precisa confirmar; até lá nada muda.</p>'
+   +'<div class="card" style="margin:0 0 16px">';
+  opcoes.forEach(x=>{
+    const f=funcao(x.a.teamId,x.a.funcaoId);
+    h+='<div class="row" onclick="permutarAoAssumir(\''+tid+'\',\''+x.a.id+'\')">'
+     +'<div class="avatar" style="background:var(--ok-soft);color:var(--ok)">'+ico('troca',18)+'</div>'
+     +'<div class="grow"><div class="t">Você passa '+esc(f?f.nome:'')+' &middot; '+fmt(x.e.data)+'</div>'
+     +'<div class="s">'+esc(x.e.titulo)+' &middot; '+esc(primeiro)+' assume no seu lugar</div></div>'
+     +'<span class="chev">&#8250;</span></div>';});
+  h+='</div><button onclick="closeSheet();confirmarAssumir(\''+tid+'\')">'
+   +'Só assumir a vaga de '+esc(primeiro)+'</button>'
+   +'<p class="sub" style="font-size:13px;margin-top:10px;padding:0">Assim você fica com as duas '
+   +'datas: a sua e a dela.</p>';
+  openSheet('Assumir a vaga',h,null);
+}
+function permutarAoAssumir(tid,escalaId){
+  closeSheet();
+  if(pedirPermuta(escalaId,tid,'')===false)return;
+  render();
+}
+async function confirmarAssumir(tid){
   const t=DB.trocas.find(x=>x.id===tid); if(!t)return;
   const a=escalaPorId(t.escalaId), ev=evento(a.eventoId), f=funcao(a.teamId,a.funcaoId);
   const base='Assumir '+f.nome+' em '+ev.titulo+' ('+fmtLong(ev.data)
