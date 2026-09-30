@@ -1,4 +1,4 @@
-const CACHE = 'escala-v4';
+const CACHE = 'escala-v5';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -7,16 +7,64 @@ self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
+/* Responder primeiro com o que está no cache e atualizar por baixo.
+   Antes era o contrário: toda abertura esperava a rede, e no iPhone — que
+   congela o app em segundo plano e o acorda com a rede ainda dormindo — essa
+   espera aparecia como tela branca. Agora o app abre na hora, mesmo offline,
+   e a versão nova entra na próxima abertura (o app avisa quando chega). */
+const PRAZO_REDE = 6000;
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(
-    fetch(e.request).then(r => {
-      const copy = r.clone();
-      caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
-      return r;
-    }).catch(() => caches.match(e.request).then(r => r || caches.match('./index.html')))
-  );
+  let url;
+  try { url = new URL(e.request.url); } catch (_) { return; }
+  if (url.origin !== location.origin) return;   /* Supabase e afins passam direto */
+  e.respondWith(responder(e.request));
 });
+
+async function responder(req) {
+  const cache = await caches.open(CACHE);
+  const guardado = await cache.match(req, { ignoreSearch: true });
+
+  const daRede = fetch(req).then(async r => {
+    if (r && r.ok) {
+      const copia = r.clone();
+      if (guardado && ehPagina(req)) avisarSeMudou(guardado.clone(), r.clone());
+      cache.put(req, copia).catch(() => {});
+    }
+    return r;
+  });
+
+  if (guardado) { daRede.catch(() => {}); return guardado; }
+
+  try { return await comPrazo(daRede, PRAZO_REDE); }
+  catch (_) {
+    const raiz = await cache.match('./index.html');
+    return raiz || new Response('Sem conexão e sem cópia guardada.', {
+      status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+    });
+  }
+}
+
+const ehPagina = req => req.mode === 'navigate' || /\/(index\.html)?(\?|$)/.test(new URL(req.url).pathname);
+
+function comPrazo(p, ms) {
+  return Promise.race([
+    p,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('a rede demorou')), ms))
+  ]);
+}
+
+/* Só avisa quando o conteúdo mudou de verdade: um aviso a cada abertura
+   ensinaria a equipe a ignorar o aviso. */
+async function avisarSeMudou(antiga, nova) {
+  try {
+    const [a, b] = await Promise.all([antiga.text(), nova.text()]);
+    if (a === b) return;
+    const lista = await self.clients.matchAll({ includeUncontrolled: true });
+    lista.forEach(c => c.postMessage({ tipo: 'nova-versao' }));
+  } catch (_) {}
+}
 
 /* ---------- NOTIFICACOES ---------- */
 /* O servidor manda um JSON: { titulo, corpo, url, tag }.

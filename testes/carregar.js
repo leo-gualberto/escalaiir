@@ -89,7 +89,7 @@ function carregar() {
     // trocas
     'podeAssumir', 'trocaCompleta', 'trocasAbertas', 'pedirTroca', 'aceitarTroca',
     'recusarTroca', 'permutasPara', 'trocaDaEscala', 'permutasAoAssumir',
-    'pedirPermuta', 'minhasEscalas', 'vejoContatos', 'telE164', 'temTelefone',
+    'pedirPermuta', 'minhasEscalas', 'vejoContatos', 'telE164', 'temTelefone', 'urlWhats',
     // informacoes do culto
     'temInfo', 'urlOk',
     // acesso

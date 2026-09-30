@@ -1168,7 +1168,7 @@ function falarComEscalado(escalaId){
   const f=funcao(a.teamId,a.funcaoId);
   const txt='Oi, '+p.nome.split(' ')[0]+'! Sobre o '+ev.titulo+' de '+fmt(ev.data)+': '
    +'você está em '+(f?f.nome:'')+' e a chegada é às '+chegada(ev,a.teamId)+'. Tudo certo?';
-  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(txt),'_blank');
+  abrirWhatsUrl(num,txt);
 }
 
 /* --- evento --- */
@@ -3829,6 +3829,26 @@ const MSG_LEMB='Oi {primeiro}, lembrete: {quando} você serve em *{funcao}* no *
 function tplConv(){return (DB.config&&DB.config.msgConv)||MSG_CONV;}
 function tplLemb(){return (DB.config&&DB.config.msgLemb)||MSG_LEMB;}
 
+/* ---- abrir o WhatsApp -------------------------------------------------
+   No iPhone, com o app instalado na tela de inicio, window.open(...,'_blank')
+   abre uma aba fantasma: ao voltar, o app aparece em branco e so recarregando
+   resolve. Instalado no iOS usamos o esquema whatsapp://, que o sistema
+   entrega ao aplicativo sem tirar a nossa pagina do ar — e, se o WhatsApp nao
+   estiver instalado, simplesmente nada acontece, em vez de sequestrar a
+   janela do app para o web.whatsapp.com sem botao de voltar. */
+function urlWhats(num,txt){
+  const t=encodeURIComponent(txt||'');
+  return (ehIOS()&&instalado())
+    ? 'whatsapp://send?phone='+num+'&text='+t
+    : 'https://wa.me/'+num+'?text='+t;
+}
+function abrirWhatsUrl(num,txt){
+  const url=urlWhats(num,txt);
+  if(ehIOS()&&instalado()){window.location.href=url;return;}
+  const w=window.open(url,'_blank','noopener');
+  if(!w)window.location.href=url;      /* bloqueador de pop-up: vai na mesma aba */
+}
+
 /* (11) 91234-5678 -> 5511912345678 ; aceita numero ja com DDI */
 function telE164(tel){
   let d=String(tel||'').replace(/\D/g,'');
@@ -3863,7 +3883,7 @@ function abrirWhats(a,tipo){
   const ctx=ctxEscala(a); ctx.quando=quandoTexto(tipo,evento(a.eventoId));
   const txt=preencher(tipo==='convocacao'?tplConv():tplLemb(),ctx);
   a.avisos=a.avisos||{}; a.avisos[tipo]=new Date().toISOString(); save();
-  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(txt),'_blank');
+  abrirWhatsUrl(num,txt);
   setTimeout(render,400);
 }
 const jaAvisado=(a,tipo)=>!!(a.avisos&&a.avisos[tipo]);
@@ -4735,6 +4755,28 @@ if(nuvemCfg()){
   setTimeout(()=>{try{lembrarPush();}catch(e){}},1200);
 }
 
+/* ---- tela em branco ao voltar ----------------------------------------
+   O iOS descarta a pagina do app quando ela passa muito tempo em segundo
+   plano (ou quando outro aplicativo assume a tela) e, ao voltar, as vezes
+   devolve a janela viva mas sem nada desenhado. Em vez de deixar a pessoa
+   diante de um branco, conferimos: se nao ha conteudo, redesenhamos; se nem
+   assim vier, recarregamos. */
+function telaVazia(){
+  const a=document.getElementById('app');
+  return !a||!a.innerHTML||a.innerHTML.trim().length<20;
+}
+function conferirTela(){
+  try{
+    if(!telaVazia())return;
+    render();
+    if(telaVazia())location.reload();
+  }catch(e){location.reload();}
+}
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden)setTimeout(conferirTela,80);
+});
+window.addEventListener('pageshow',()=>setTimeout(conferirTela,80));
+
 /* Enquanto voce esta com o app aberto, outra pessoa pode mexer na escala.
    Ao voltar para o app — e de dois em dois minutos com ele na frente — o app
    busca o que mudou. Nunca quando ha algo seu esperando para subir ou uma
@@ -4780,6 +4822,12 @@ if('serviceWorker' in navigator){
   /* assinatura renovada pelo navegador: guarda a nova no perfil */
   navigator.serviceWorker.addEventListener('message',ev=>{
     const d=ev.data||{};
+    if(d.tipo==='nova-versao'){
+      /* o service worker achou uma versao diferente enquanto servia a do
+         cache; quem decide a hora de recarregar e a pessoa */
+      try{toast('Versão nova disponível — recarregue para atualizar');}catch(e){}
+      return;
+    }
     if(d.tipo==='push-renovado'&&d.assinatura){
       const p=souEu(); if(!p)return;
       p.push=Object.assign(JSON.parse(JSON.stringify(d.assinatura)),

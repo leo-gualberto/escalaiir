@@ -404,6 +404,14 @@ teste('telefone vira número de WhatsApp', () => {
   ok(app.temTelefone({ telefone: '61 99999-8888' }));
 });
 
+teste('link do WhatsApp leva o número e o texto', () => {
+  const url = app.urlWhats('5561999998888', 'Oi, tudo certo?');
+  ok(url.indexOf('5561999998888') > 0, url);
+  ok(url.indexOf('Oi%2C%20tudo%20certo%3F') > 0 || url.indexOf('Oi,%20tudo%20certo?') > 0, url);
+  /* fora do iPhone instalado, o link é o wa.me de sempre */
+  ok(url.indexOf('https://wa.me/') === 0, 'no navegador comum é wa.me: ' + url);
+});
+
 /* ---------- troca casada ---------- */
 
 teste('ao assumir, aparecem as minhas datas que a outra pessoa pode cobrir', () => {
