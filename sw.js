@@ -1,4 +1,4 @@
-const CACHE = 'escala-v6';
+const CACHE = 'escala-v7';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 /* ---------- ATUALIZACAO ----------
@@ -17,12 +17,44 @@ const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png',
    "nova versao", que manda a mensagem 'assumir' daqui de baixo. Trocar de
    versao passa a ser uma decisao, nunca um susto. */
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(
-    /* 'reload' para o precache nao herdar uma copia velha do cache HTTP */
-    FILES.map(f => new Request(f, { cache: 'reload' }))
-  )));
-  /* sem skipWaiting de proposito */
+  e.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.all(FILES.map(async f => {
+      try {
+        /* 'reload' para o precache nao herdar uma copia velha do cache HTTP */
+        const r = await fetch(new Request(f, { cache: 'reload' }));
+        await guardar(cache, f, r);
+      } catch (_) {}
+    }));
+    /* Sem janela aberta nao ha tela para quebrar — e quando o app esta
+       travado, assumir na hora e o que devolve o app para a pessoa. Com
+       alguma janela viva, espera (ver o comentario acima). */
+    const janelas = await self.clients.matchAll({ type: 'window' });
+    if (!janelas.length) await self.skipWaiting();
+  })());
 });
+
+/* ---------- RESPOSTA SEM REDIRECIONAMENTO ----------
+   O navegador RECUSA uma resposta redirecionada para uma navegacao servida
+   por service worker — no Safari isso apareceu como "Response served by
+   service worker has redirections" e o app simplesmente nao abria. Acontece
+   porque "/" responde com um desvio para "/index.html": a resposta carrega a
+   marca de redirecionada, e guardar essa copia no cache contamina todas as
+   aberturas seguintes.
+   Remontar a resposta a partir do corpo tira a marca. */
+async function semDesvio(res) {
+  if (!res || !res.redirected) return res;
+  const corpo = await res.blob();
+  return new Response(corpo, {
+    status: res.status, statusText: res.statusText, headers: res.headers
+  });
+}
+async function guardar(cache, chave, res) {
+  if (!res || !res.ok) return res;
+  const limpa = await semDesvio(res.clone());
+  await cache.put(chave, limpa.clone()).catch(() => {});
+  return limpa;
+}
 
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
@@ -56,20 +88,18 @@ async function responder(req) {
   const guardado = await cache.match(req, { ignoreSearch: true });
 
   const daRede = fetch(req).then(async r => {
-    if (r && r.ok) {
-      const copia = r.clone();
-      if (guardado && ehPagina(req)) avisarSeMudou(guardado.clone(), r.clone());
-      cache.put(req, copia).catch(() => {});
-    }
-    return r;
+    if (!r || !r.ok) return r;
+    if (guardado && ehPagina(req)) avisarSeMudou(guardado.clone(), r.clone());
+    return await guardar(cache, req, r);
   });
 
-  if (guardado) { daRede.catch(() => {}); return guardado; }
+  if (guardado) { daRede.catch(() => {}); return await semDesvio(guardado); }
 
-  try { return await comPrazo(daRede, PRAZO_REDE); }
+  try { return await semDesvio(await comPrazo(daRede, PRAZO_REDE)); }
   catch (_) {
     const raiz = await cache.match('./index.html');
-    return raiz || new Response('Sem conexão e sem cópia guardada.', {
+    if (raiz) return await semDesvio(raiz);
+    return new Response('Sem conexão e sem cópia guardada.', {
       status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' }
     });
   }
