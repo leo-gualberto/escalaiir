@@ -4823,6 +4823,32 @@ if(nuvemCfg()){
   setTimeout(()=>{try{lembrarPush();}catch(e){}},1200);
 }
 
+/* ---- versao nova esperando -------------------------------------------
+   O service worker novo fica parado ate alguem mandar assumir. O aviso abaixo
+   e esse alguem: aparece uma vez, explica o que vai acontecer e so recarrega
+   quando a pessoa toca. Se ela ignorar, a troca acontece sozinha na proxima
+   vez que o app for aberto do zero — que e quando nao ha tela para quebrar. */
+var RECARREGANDO=false, JA_ANUNCIEI_VERSAO=false;
+function anunciarVersaoNova(reg){
+  if(JA_ANUNCIEI_VERSAO)return;
+  if(!reg||!reg.waiting)return;
+  JA_ANUNCIEI_VERSAO=true;
+  const t=document.getElementById('toast');
+  if(!t)return;
+  t.innerHTML='Versão nova pronta &nbsp;<b style="text-decoration:underline">atualizar</b>';
+  t.onclick=()=>{aplicarVersaoNova();};
+  t.classList.add('on');
+  clearTimeout(t._x);
+  t._x=setTimeout(()=>{t.classList.remove('on');t.onclick=null;},12000);
+}
+function aplicarVersaoNova(){
+  RECARREGANDO=true;                       /* o controllerchange vem logo depois */
+  navigator.serviceWorker.getRegistration().then(reg=>{
+    if(reg&&reg.waiting)reg.waiting.postMessage({tipo:'assumir'});
+    else location.reload();
+  }).catch(()=>location.reload());
+}
+
 /* ---- tela em branco ao voltar ----------------------------------------
    O iOS descarta a pagina do app quando ela passa muito tempo em segundo
    plano (ou quando outro aplicativo assume a tela) e, ao voltar, as vezes
@@ -4886,14 +4912,34 @@ window.addEventListener('appinstalled',()=>{PROMPT_INSTALL=null;DB.instalarOcult
 
 render();
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
+  /* A versao nova nao assume sozinha (ver o comentario em sw.js): ela espera.
+     O app percebe que ha uma esperando e oferece o botao; quem decide a hora
+     de atualizar e a pessoa, nunca o meio de uma tela aberta. */
+  navigator.serviceWorker.register('sw.js').then(reg=>{
+    if(!reg)return;
+    if(reg.waiting)anunciarVersaoNova(reg);
+    reg.addEventListener('updatefound',()=>{
+      const novo=reg.installing; if(!novo)return;
+      novo.addEventListener('statechange',()=>{
+        /* 'installed' com controlador ja existente = e uma atualizacao,
+           nao a primeira instalacao */
+        if(novo.state==='installed'&&navigator.serviceWorker.controller)anunciarVersaoNova(reg);
+      });
+    });
+    /* de hora em hora o navegador reconfere; pedir aqui adianta a descoberta */
+    setInterval(()=>{try{reg.update();}catch(e){}},30*60*1000);
+  }).catch(()=>{});
+
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(RECARREGANDO)return;       /* so recarrega quando FOI a pessoa que pediu */
+    RECARREGANDO=true; location.reload();
+  });
   /* assinatura renovada pelo navegador: guarda a nova no perfil */
   navigator.serviceWorker.addEventListener('message',ev=>{
     const d=ev.data||{};
     if(d.tipo==='nova-versao'){
-      /* o service worker achou uma versao diferente enquanto servia a do
-         cache; quem decide a hora de recarregar e a pessoa */
-      try{toast('Versão nova disponível — recarregue para atualizar');}catch(e){}
+      /* o service worker achou conteudo diferente enquanto servia o do cache */
+      try{navigator.serviceWorker.getRegistration().then(r=>r&&anunciarVersaoNova(r));}catch(e){}
       return;
     }
     if(d.tipo==='push-renovado'&&d.assinatura){

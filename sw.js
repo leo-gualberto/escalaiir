@@ -1,11 +1,40 @@
-const CACHE = 'escala-v5';
+const CACHE = 'escala-v6';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+
+/* ---------- ATUALIZACAO ----------
+   Esta parte existe por causa de um sintoma concreto: a cada publicacao, o
+   app instalado no iPhone parava de abrir e so voltava sendo adicionado de
+   novo a tela de inicio.
+
+   A causa era a versao nova assumir no meio do caminho: com skipWaiting() e
+   clients.claim(), o service worker trocava enquanto a pagina rodava, e o
+   activate ainda apagava o cache antigo debaixo dela. No navegador isso
+   passa; no app instalado do iOS, que vive sendo congelado e restaurado,
+   quebra.
+
+   Agora a versao nova FICA ESPERANDO. Ela so assume quando nao ha mais
+   nenhuma janela usando a antiga — ou quando a pessoa toca no aviso de
+   "nova versao", que manda a mensagem 'assumir' daqui de baixo. Trocar de
+   versao passa a ser uma decisao, nunca um susto. */
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(
+    /* 'reload' para o precache nao herdar uma copia velha do cache HTTP */
+    FILES.map(f => new Request(f, { cache: 'reload' }))
+  )));
+  /* sem skipWaiting de proposito */
 });
+
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
-    .then(() => self.clients.claim()));
+  e.waitUntil((async () => {
+    const ks = await caches.keys();
+    await Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.tipo === 'assumir') self.skipWaiting();   /* a pessoa pediu para atualizar */
 });
 /* Responder primeiro com o que está no cache e atualizar por baixo.
    Antes era o contrário: toda abertura esperava a rede, e no iPhone — que
