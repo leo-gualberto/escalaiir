@@ -26,11 +26,14 @@ self.addEventListener('install', e => {
         await guardar(cache, f, r);
       } catch (_) {}
     }));
-    /* Sem janela aberta nao ha tela para quebrar — e quando o app esta
-       travado, assumir na hora e o que devolve o app para a pessoa. Com
-       alguma janela viva, espera (ver o comentario acima). */
-    const janelas = await self.clients.matchAll({ type: 'window' });
-    if (!janelas.length) await self.skipWaiting();
+    /* Assume sempre. A versao anterior esperava todas as janelas fecharem, e
+       isso criou um impasse real: quando o service worker no comando esta
+       quebrado, a unica janela aberta e a da mensagem de erro — entao a
+       correcao nunca entrava em vigor. Assumir aqui NAO mexe em quem ja esta
+       com uma tela aberta: sem clients.claim(), cada pagina so passa para a
+       versao nova no proximo carregamento, que e navegacao nova e nao tem
+       tela para quebrar. */
+    await self.skipWaiting();
   })());
 });
 
@@ -58,9 +61,18 @@ async function guardar(cache, chave, res) {
 
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
-    const ks = await caches.keys();
-    await Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)));
-    await self.clients.claim();
+    /* Apagar o cache antigo com alguem usando a versao antiga foi exatamente
+       o que deixou o app do iPhone em branco: a pagina continuava pedindo
+       arquivos de um cache que tinha acabado de sumir. Com janela aberta, o
+       cache velho fica mais uma rodada; ele sai na proxima ativacao, quando
+       ninguem mais depender dele. */
+    const janelas = await self.clients.matchAll({ type: 'window' });
+    if (!janelas.length) {
+      const ks = await caches.keys();
+      await Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    }
+    /* sem clients.claim(): cada pagina adota a versao nova no proximo
+       carregamento, nunca no meio de uma tela aberta */
   })());
 });
 
