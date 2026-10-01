@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-<meta name="theme-color" content="#C2571F">
+<meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Escala">
@@ -12,24 +13,29 @@
 <title>Escala da Equipe</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-/* Paleta da IIR Brasil: papel creme, terracota, dourado e um marrom quente
-   no lugar do preto. Nada aqui é cor padrão de biblioteca — todas saem da
-   identidade da igreja. */
+/* Paleta no espírito do site da Apple: cinza muito claro no fundo, branco
+   puro nos cartões, quase-preto no texto e um azul único para ação. A cor
+   não decora nada aqui — ela só separa plano de fundo, superfície e o que
+   se pode tocar. Verde, âmbar e vermelho ficam reservados para estado
+   (confirmado, atenção, problema), nas versões das cores de sistema da
+   Apple ajustadas para contraste de texto. */
 :root{
-  --bg:#F1ECE2; --card:#FFFCF6; --ink:#2A241E; --muted:#7C6F60; --line:#E3D9C9;
-  --brand:#C2571F; --brand-soft:#F8EADF; --ok:#5F7138; --ok-soft:#EDF1E1;
-  --warn:#A8823F; --warn-soft:#F8F0DF; --bad:#A8371F; --bad-soft:#F9E7E1;
+  --bg:#F5F5F7; --card:#FFFFFF; --ink:#1D1D1F; --muted:#6E6E73; --line:#D2D2D7;
+  --brand:#0071E3; --brand-soft:#EAF2FD; --ok:#1D7F36; --ok-soft:#E6F5EA;
+  --warn:#9A5B00; --warn-soft:#FBF0E2; --bad:#C9100C; --bad-soft:#FCEAE9;
   --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
-  --on-brand:#FFFCF6; --hero-bg:#2A241E; --hero-fg:#F4EFE4;
-  --dourado:#B08D57;
-  --serif:"Fraunces",ui-serif,"New York",Georgia,"Times New Roman",serif;
+  --on-brand:#FFFFFF; --hero-bg:#1D1D1F; --hero-fg:#F5F5F7;
+  --dourado:#86868B;
+  --serif:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,sans-serif;
 }
 @media (prefers-color-scheme:dark){
-  :root{--bg:#15120E;--card:#221D17;--ink:#F2EDE3;--muted:#A2968A;--line:#332B23;
-  --brand:#E08A4E;--brand-soft:#3A2417;--ok:#A6B96B;--ok-soft:#232917;
-  --warn:#D9B978;--warn-soft:#2E2515;--bad:#E08A72;--bad-soft:#331A13;
-  --on-brand:#221D17;--hero-bg:#0F0C09;--hero-fg:#F2EDE3;
-  --dourado:#C9A876}
+  /* No escuro a Apple usa preto de verdade no fundo e cinzas elevados nas
+     superfícies — e o azul clareia, senão some sobre o preto. */
+  :root{--bg:#000000;--card:#1C1C1E;--ink:#F5F5F7;--muted:#98989D;--line:#2C2C2E;
+  --brand:#2997FF;--brand-soft:#0B2742;--ok:#30D158;--ok-soft:#10301B;
+  --warn:#FF9F0A;--warn-soft:#33260B;--bad:#FF453A;--bad-soft:#3A1413;
+  --on-brand:#FFFFFF;--hero-bg:#1C1C1E;--hero-fg:#F5F5F7;
+  --dourado:#98989D}
 }
 html,body{margin:0;padding:0;height:100%}
 body{
@@ -149,18 +155,18 @@ nav .bdg{position:absolute;top:4px;left:50%;margin-left:5px;background:var(--bad
    ============================================================ */
 /* --on-brand = cor do texto EM CIMA da cor de destaque. No modo escuro a cor
    de destaque fica clara, entao o texto tem de escurecer, senao some. */
-/* Os dois papéis se distinguem pelo cabeçalho, não por cores diferentes de
-   marca: quem lidera vê o marrom escuro da identidade; quem serve vê a
-   terracota. A cor de ação é a mesma para os dois. */
-body[data-papel="lider"]{--brand:#C2571F;--brand-soft:#F8EADF;--brand-ink:#8A3C13;
-  --on-brand:#FFFCF6;--hero-bg:#2A241E;--hero-fg:#F4EFE4}
-body[data-papel="voluntario"]{--brand:#C2571F;--brand-soft:#F8EADF;--brand-ink:#8A3C13;
-  --on-brand:#FFFCF6;--hero-bg:#C2571F;--hero-fg:#FFF6EC}
+/* Os dois papéis continuam se distinguindo pelo cabeçalho, não pela cor de
+   ação: quem lidera vê o quase-preto; quem serve vê o azul. O botão é azul
+   para os dois — cor de ação que muda conforme quem entrou só confunde. */
+body[data-papel="lider"]{--brand:#0071E3;--brand-soft:#EAF2FD;--brand-ink:#0057B8;
+  --on-brand:#FFFFFF;--hero-bg:#1D1D1F;--hero-fg:#F5F5F7}
+body[data-papel="voluntario"]{--brand:#0071E3;--brand-soft:#EAF2FD;--brand-ink:#0057B8;
+  --on-brand:#FFFFFF;--hero-bg:#0071E3;--hero-fg:#FFFFFF}
 @media (prefers-color-scheme:dark){
-  body[data-papel="lider"]{--brand:#E08A4E;--brand-soft:#3A2417;--brand-ink:#F0B98A;
-    --on-brand:#221D17;--hero-bg:#0F0C09;--hero-fg:#F2EDE3}
-  body[data-papel="voluntario"]{--brand:#E08A4E;--brand-soft:#3A2417;--brand-ink:#F0B98A;
-    --on-brand:#221D17;--hero-bg:#7A3512;--hero-fg:#FBEEE2}
+  body[data-papel="lider"]{--brand:#2997FF;--brand-soft:#0B2742;--brand-ink:#7FC0FF;
+    --on-brand:#FFFFFF;--hero-bg:#1C1C1E;--hero-fg:#F5F5F7}
+  body[data-papel="voluntario"]{--brand:#2997FF;--brand-soft:#0B2742;--brand-ink:#7FC0FF;
+    --on-brand:#FFFFFF;--hero-bg:#0A3A6B;--hero-fg:#F5F5F7}
 }
 #app{padding-top:0}
 
