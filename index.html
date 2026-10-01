@@ -1721,10 +1721,13 @@ function vPerfil(){
    +'<div class="row" onclick="document.getElementById(\'imp\').click()"><div class="grow"><div class="t">Importar backup</div>'
    +'<div class="s">Restaura de um arquivo .json</div></div><span class="chev">&#8250;</span></div>'
    +'</div><input type="file" id="imp" accept="application/json" style="display:none" onchange="importar(this)">';
+  /* "Apagar tudo e comecar do zero" saiu daqui: um toque errado, com a nuvem
+     ligada, levava a igreja inteira junto — e nao existe caso de uso real no
+     dia a dia que justifique o botao estar a um toque de distancia. Quem
+     precisar comecar do zero usa o Supabase ou fala com quem cuida do app. */
   h+='<div class="gap"></div><div class="pad">'
    +'<button class="btn2" onclick="sair()">Sair</button><div class="gap"></div>'
-   +'<button class="btn2 btn-d" onclick="desvincular()">Desvincular este aparelho</button><div class="gap"></div>'
-   +'<button class="btn2 btn-d" onclick="limparTudo()">Apagar tudo e começar do zero</button></div>';
+   +'<button class="btn2 btn-d" onclick="desvincular()">Desvincular este aparelho</button></div>';
   h+=rodape();
   return h;
 }
@@ -3555,11 +3558,12 @@ function agendaUrl(t){return NUVEM_URL+'/functions/v1/agenda?t='+encodeURICompon
    direto, sem passar por Ajustes */
 function agendaWebcal(t){return agendaUrl(t).replace(/^https?:/,'webcal:');}
 const ehApple=()=>/iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent||'');
-/* O Google aceita o endereco do calendario como parametro cid: abre a tela
-   dele ja perguntando "adicionar este calendario?". E um toque e confirmar,
-   em vez de copiar o endereco e procurar o menu "De URL". */
+/* O Google abre a caixa de "adicionar calendario?" pelo parametro cid — mas
+   so entende o endereco em webcal://. Com https ele trata o valor como id de
+   um calendario do proprio Google e responde "problema no URL". */
 function linkGoogleAssinatura(t){
-  return 'https://calendar.google.com/calendar/u/0/r?cid='+encodeURIComponent(agendaUrl(t));
+  return 'https://calendar.google.com/calendar/render?cid='
+    +encodeURIComponent(agendaWebcal(t));
 }
 
 /* Roda depois de conectar. Se a migração ainda nao foi aplicada, a chamada

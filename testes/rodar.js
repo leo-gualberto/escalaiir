@@ -421,7 +421,10 @@ teste('endereços da assinatura da agenda', () => {
   igual(app.agendaWebcal(t), u.replace(/^https:/, 'webcal:'), 'o iPhone abre por webcal');
   const g = app.linkGoogleAssinatura(t);
   ok(g.indexOf('calendar.google.com') > 0 && g.indexOf('cid=') > 0, g);
-  ok(g.indexOf(encodeURIComponent(u)) > 0, 'o endereço vai codificado no cid');
+  /* o Google só entende o cid em webcal://; com https ele responde
+     "problema no URL", porque trata o valor como id de calendário dele */
+  ok(g.indexOf(encodeURIComponent(app.agendaWebcal(t))) > 0, 'o cid leva o endereço webcal: ' + g);
+  ok(g.indexOf('https%3A%2F%2F') < 0, 'não pode ir https no cid: ' + g);
 });
 
 teste('o compromisso começa na chegada, não no início do culto', () => {
