@@ -59,7 +59,12 @@ h2{font-size:18px;font-weight:700;margin:22px 16px 8px}
 .row:last-child{border-bottom:none}
 .row .grow{flex:1;min-width:0}
 .row .t{font-weight:600}
-.row .s{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Era uma linha so com reticencias, e o que sumia costumava ser justamente o
+   que importava: "6 funcoes - 8 por culto - ch..." perdia o horario de
+   chegada. Duas linhas cabem no cartao e o corte, quando acontece, ja cai
+   depois da informacao util. */
+.row .s{font-size:13px;color:var(--muted);display:-webkit-box;-webkit-box-orient:vertical;
+  -webkit-line-clamp:2;line-clamp:2;overflow:hidden}
 .chev{color:var(--muted);font-size:20px;flex:none}
 .avatar{width:38px;height:38px;border-radius:50%;background:var(--brand-soft);color:var(--brand);
   display:grid;place-items:center;font-weight:700;font-size:14px;flex:none}
@@ -115,6 +120,40 @@ nav .bdg{position:absolute;top:4px;left:50%;margin-left:5px;background:var(--bad
 .sheet-h b{flex:1;font-size:17px}
 .sheet-h button{width:auto;background:none;color:var(--brand);padding:4px 2px;font-size:16px}
 .sheet-b{padding:16px}
+/* Busca: a lista de pessoas cresce e nao havia como procurar ninguem. */
+.busca{position:relative;margin:0 16px 10px}
+.busca input{margin:0;padding-left:40px;padding-right:40px}
+.busca>svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);
+  pointer-events:none}
+.busca .x{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:auto;
+  background:none;color:var(--muted);padding:9px 12px;font-size:17px;line-height:1}
+.busca input::-webkit-search-cancel-button,
+.busca input::-webkit-search-decoration{-webkit-appearance:none;display:none}
+
+/* Avisos recolhidos: a partir de dois, eles viravam uma parede antes do
+   conteudo — na tela do voluntario o cartao que responde "quando eu sirvo"
+   nascia abaixo da dobra. */
+.avisos{margin:0 16px 12px;background:var(--card);border:1px solid var(--line);border-radius:14px;
+  overflow:hidden}
+.avisos-h{display:flex;align-items:center;gap:9px;padding:12px 14px;cursor:pointer;
+  font-size:14px;color:var(--warn)}
+.avisos-b{padding:0 0 2px}
+.avisos-b>*{margin-left:12px;margin-right:12px}
+
+/* Barra fina que gruda no topo da tela do culto: ela passa de 3.000px, e
+   rolando ate a ultima equipe ja nao dava para saber de qual culto se trata.
+   O titulo so aparece aqui quando o titulo grande sai de cena. */
+.fixo{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:10px;
+  padding:calc(var(--safe-t) + 10px) 16px 10px;background:var(--bg);
+  border-bottom:1px solid transparent;transition:border-color .18s}
+.fixo.mostra{border-bottom-color:var(--line)}
+.fixo button{width:auto;background:none;color:var(--brand);padding:4px 0;font-size:16px;
+  font-weight:700;flex:none}
+.fixo b{flex:1;min-width:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  opacity:0;transition:opacity .18s}
+.fixo .pill{opacity:0;transition:opacity .18s;flex:none}
+.fixo.mostra b,.fixo.mostra .pill{opacity:1}
+
 .empty{text-align:center;color:var(--muted);padding:36px 24px;font-size:15px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
 .chip{padding:8px 13px;border-radius:99px;border:1px solid var(--line);background:var(--card);
@@ -146,6 +185,14 @@ nav .bdg{position:absolute;top:4px;left:50%;margin-left:5px;background:var(--bad
   letter-spacing:.6px;margin:20px 16px 7px}
 .bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px}
 .bar i{display:block;height:100%;background:var(--brand)}
+/* Duas faixas na mesma barra: a clara e quem esta escalado, a cheia e quem ja
+   confirmou. Uma barra unica, verde e cheia, com "0 confirmados" escrito ao
+   lado, prometia uma coisa que ainda nao tinha acontecido. */
+.bar.bar2{position:relative}
+.bar.bar2 i{position:absolute;left:0;top:0;height:100%;border-radius:99px}
+.bar.bar2 i.ocupado{background:var(--brand);opacity:.3}
+.bar.bar2 i.ocupado.falta{background:var(--warn);opacity:.5}
+.bar.bar2 i.conf{background:var(--ok)}
 .warnbox{background:var(--warn-soft);color:var(--warn);font-size:13px;font-weight:600;
   padding:11px 14px;border-radius:12px;margin:0 16px 12px}
 .slot{display:flex;align-items:center;gap:11px;padding:12px 16px;border-bottom:1px solid var(--line)}
@@ -197,6 +244,28 @@ body[data-papel="voluntario"]{--brand:#0071E3;--brand-soft:#EAF2FD;--brand-ink:#
 .conx.off{background:rgba(255,214,10,.26)}
 .conx.bad{background:rgba(255,69,58,.3)}
 @keyframes pisca{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ---------- NO COMPUTADOR ----------
+   A escala e montada sentado, numa tela grande, e o app era uma coluna de
+   640px no meio de um monitor vazio. A partir de 1000px a barra de abas vira
+   um menu lateral e o conteudo ganha largura. No celular nada muda. */
+@media (min-width:1000px){
+  nav{top:0;bottom:0;right:auto;width:232px;flex-direction:column;justify-content:flex-start;
+    gap:2px;padding:26px 14px;border-top:none;border-right:1px solid var(--line);
+    backdrop-filter:none}
+  nav button{flex:none;width:100%;flex-direction:row;justify-content:flex-start;gap:12px;
+    font-size:15px;padding:11px 13px;border-radius:11px}
+  nav button.on{background:var(--brand-soft)}
+  nav button svg{width:21px;height:21px}
+  nav .bdg{position:static;margin-left:auto;transform:none}
+  #app{max-width:900px;margin-left:max(256px,calc(50% - 450px));margin-right:auto;
+    padding:28px 0 56px}
+  .hero{border-radius:20px}
+  .toast{left:auto;right:28px;bottom:28px;transform:translateY(12px)}
+  .toast.on{transform:translateY(0)}
+  .sheet{max-width:560px;border-radius:20px}
+  .fixo{top:0;padding-top:12px}
+}
 @media (prefers-reduced-motion:reduce){.conx.sync i{animation:none}}
 .hero-org{font-size:12px;font-weight:700;opacity:.85;color:var(--hero-fg);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40%}
@@ -441,7 +510,8 @@ function limparTudo(){if(!confirm('Apagar TODOS os dados desta igreja neste apar
 /* ============ UTILIDADES ============ */
 const DOW=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-const MESL=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+/* minuscula: em portugues nome de mes nao e nome proprio ("4 de outubro") */
+const MESL=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function pd(s){const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c);}
 function fmt(s){const d=pd(s);return DOW[d.getDay()]+', '+d.getDate()+' '+MES[d.getMonth()];}
@@ -728,7 +798,11 @@ function devolverFoco(f){
   const e=document.getElementById(f.id);
   if(!e)return;
   try{
-    if(e.value!==f.valor)e.value=f.valor;
+    /* Devolver o texto digitado so faz sentido para campo que o render nao
+       sabe reconstruir. O campo de busca guarda o proprio valor em BUSCA, e
+       devolver o texto antigo aqui desfaria um "limpar busca" feito enquanto
+       ele estava em foco. */
+    if(e.value!==f.valor&&!e.hasAttribute('data-estado'))e.value=f.valor;
     e.focus({preventScroll:true});
     if(f.ini!=null&&e.setSelectionRange)e.setSelectionRange(f.ini,f.fim);
   }catch(_){}
@@ -742,6 +816,7 @@ function trocarTela(a,chave,desenhar){
   TELA_ATUAL=chave;
   irPara(y);
   devolverFoco(foco);
+  FIXO_MOSTRA=null; conferirFixo();
 }
 
 /* ---------- VOZ E TECLADO ----------
@@ -970,7 +1045,8 @@ const ICONES={
   check:'M4.5 12.8 9.5 18 19.5 6.5',
   info:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M12 11v6 M12 7.5h.01',
   conversa:'M12 4.5c-4.2 0-7.6 2.9-7.6 6.4 0 1.9 1 3.7 2.7 4.9L6.2 19.5l3.9-1.7c.6.1 1.2.2 1.9.2 4.2 0 7.6-2.9 7.6-6.4S16.2 4.5 12 4.5Z',
-  triste:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M8.5 16c.9-1.3 2.1-2 3.5-2s2.6.7 3.5 2 M9 9.5h.01 M15 9.5h.01'
+  triste:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M8.5 16c.9-1.3 2.1-2 3.5-2s2.6.7 3.5 2 M9 9.5h.01 M15 9.5h.01',
+  lupa:'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z M20 20l-4-4'
 };
 function ico(nome,tam,cor){
   const d=ICONES[nome]; if(!d)return '';
@@ -978,6 +1054,55 @@ function ico(nome,tam,cor){
    +'stroke="'+(cor||'currentColor')+'" stroke-width="1.7" stroke-linecap="round" '
    +'stroke-linejoin="round" aria-hidden="true" style="vertical-align:-.18em;flex:none">'
    +d.split(' M').map((p,i)=>'<path d="'+(i?'M'+p:p)+'"/>').join('')+'</svg>';
+}
+
+/* ---------- BUSCA ----------
+   Procurar "jose" tem de achar "José", e "ANA" tem de achar "Ana": a
+   comparacao ignora acento e caixa dos dois lados. */
+const semAcento=t=>String(t==null?'':t).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const casa=(texto,termo)=>!termo||semAcento(texto).indexOf(semAcento(termo))>=0;
+const BUSCA={};
+/* O campo vive dentro da tela que se redesenha a cada tecla. Isso so funciona
+   porque guardarFoco/devolverFoco devolvem o cursor no lugar — e por isso o
+   campo precisa de id fixo. */
+function campoBusca(chave,convite){
+  const v=BUSCA[chave]||'';
+  return '<div class="busca">'+ico('lupa',18)
+   +'<input id="busca_'+chave+'" type="search" data-estado autocomplete="off" autocorrect="off" '
+   +'spellcheck="false" placeholder="'+esc(convite)+'" value="'+esc(v)+'" '
+   +'oninput="BUSCA[\''+chave+'\']=this.value;render()">'
+   +(v?'<button class="x" aria-label="Limpar busca" '
+      +'onclick="BUSCA[\''+chave+'\']=\'\';render()">&#10005;</button>':'')
+   +'</div>';
+}
+/* Dentro de uma folha nao da para redesenhar a cada tecla (a folha nao passa
+   pelo render), entao a busca so esconde e mostra as linhas que ja existem. */
+function filtrarLinhas(campo,seletor){
+  const t=semAcento(campo.value);
+  let n=0;
+  document.querySelectorAll(seletor).forEach(el=>{
+    const alvo=semAcento(el.getAttribute('data-busca')||el.textContent);
+    const ok=!t||alvo.indexOf(t)>=0;
+    el.style.display=ok?'':'none';
+    if(ok)n++;
+  });
+  const vazio=document.getElementById('buscaVazia');
+  if(vazio)vazio.style.display=n?'none':'';
+}
+
+/* ---------- AVISOS ----------
+   Um aviso aparece inteiro. Dois ou mais entram recolhidos: a parede de
+   avisos empurrava para baixo da dobra exatamente a informacao que a pessoa
+   abriu o app para ver. */
+let AVISOS_ABERTOS=false;
+function blocoAvisos(partes){
+  const lista=partes.filter(Boolean);
+  if(lista.length<2)return lista.join('');
+  return '<div class="avisos"><div class="avisos-h" '
+   +'onclick="AVISOS_ABERTOS=!AVISOS_ABERTOS;render()" aria-expanded="'+(AVISOS_ABERTOS?'true':'false')+'">'
+   +ico('alerta',17)+'<b>'+lista.length+' avisos</b><span style="flex:1"></span>'
+   +'<span class="chev">'+(AVISOS_ABERTOS?'&#9652;':'&#9662;')+'</span></div>'
+   +(AVISOS_ABERTOS?'<div class="avisos-b">'+lista.join('')+'</div>':'')+'</div>';
 }
 
 /* rodape, igual em todas as telas de raiz */
@@ -1013,38 +1138,52 @@ function vEscalas(){
   let h=hero('Escalas','Cultos e eventos da sua igreja',
     euPosso('eventos')?'<button class="add" aria-label="Novo culto" onclick="novoEvento()">+</button>':'',
     f.length?numeros([[f.length,'próximos cultos'],[vagas,'vagas abertas'],[conf,'confirmados']]):'');
-  h+=bannerConexao()+bannerNuvem()+bannerInstalar();
-  if(tr.length&&euPosso('trocas'))h+='<div class="infobox" onclick="tab(\'trocas\')">&#8644; '
-    +tr.length+' pedido(s) de troca em aberto <span style="flex:1"></span>&rsaquo;</div>';
-  if(vagas&&euPosso('escalas'))h+='<div class="warnbox">&#9888; '+vagas
-    +' vaga(s) sem ninguém. Abra o culto e toque em Escalar automático.</div>';
+  /* todos os avisos juntos, para o bloco se recolher quando forem varios */
+  const avisos=[bannerConexao(),bannerNuvem(),bannerInstalar()];
+  if(tr.length&&euPosso('trocas'))avisos.push('<div class="infobox" onclick="tab(\'trocas\')">&#8644; '
+    +tr.length+' pedido(s) de troca em aberto <span style="flex:1"></span>&rsaquo;</div>');
+  if(vagas&&euPosso('escalas'))avisos.push('<div class="warnbox">&#9888; '+vagas
+    +' vaga(s) sem ninguém. Abra o culto e toque em Escalar automático.</div>');
   /* Quem bloqueou a data DEPOIS de ser escalado continua na escala e ninguem
      percebe ate o dia do culto. O aviso na hora do bloqueio e facil de perder;
      este fica na tela ate o problema ser resolvido. */
   /* o que e para esta semana vem antes do resto: e o que ainda da para resolver */
   const urgentes=eventosComBuraco();
   if(urgentes.length){
-    h+='<div class="warnbox" style="display:block;background:var(--bad-soft);color:var(--bad)">'
+    let u='<div class="warnbox" style="display:block;background:var(--bad-soft);color:var(--bad)">'
      +'<b>'+ico("relogio",16)+' Faltando gente nos próximos '+DIAS_ALERTA_BURACO+' dias</b>';
     urgentes.forEach(ev=>{const s=statusEvento(ev), q=diasAte(ev.data);
-      h+='<div style="font-weight:500;margin-top:5px;cursor:pointer" onclick="go(\'evento\',\''+ev.id+'\')">'
+      u+='<div style="font-weight:500;margin-top:5px;cursor:pointer" onclick="go(\'evento\',\''+ev.id+'\')">'
        +'&bull; <b>'+esc(ev.titulo)+'</b> &middot; '+fmt(ev.data)+' &middot; '
        +(s.total-s.preenchidos)+' vaga(s) &middot; '
        +(q===0?'é hoje':q===1?'é amanhã':'em '+q+' dias')+' &rsaquo;</div>';});
-    h+='</div>';
+    avisos.push(u+'</div>');
   }
   const cfl=conflitosEscala();
-  if(cfl.length)h+='<div class="warnbox" style="display:block;cursor:pointer" onclick="verConflitos()">'
+  if(cfl.length)avisos.push('<div class="warnbox" style="display:block;cursor:pointer" onclick="verConflitos()">'
    +'<b>'+ico("alerta",16)+' '+cfl.length+' pessoa(s) escaladas em dia que bloquearam</b>'
-   +'<div style="font-weight:600;margin-top:4px;opacity:.85">Toque para ver e trocar. &rsaquo;</div></div>';
+   +'<div style="font-weight:600;margin-top:4px;opacity:.85">Toque para ver e trocar. &rsaquo;</div></div>');
+  h+=blocoAvisos(avisos);
   if(!f.length){
     if(euPosso('eventos')&&(!DB.teams.length||!DB.pessoas.filter(x=>x.funcaoIds.length).length))
       h+=roteiroInicial();
     else h+='<div class="empty"><b>Nenhum culto marcado</b>'
       +(euPosso('eventos')?'Toque no + ali em cima para criar o primeiro.':'Fale com o líder.')+'</div>';
   }
-  else{h+='<div class="card">';
+  else{
+    /* um cartao por mes: a lista corria direto de outubro a dezembro sem
+       nenhuma marca de onde um mes acabava */
+    const anoAtual=hojeIso().slice(0,4);
+    let mesAberto=null;
     f.forEach(ev=>{const s=statusEvento(ev), d=pd(ev.data);
+      const mes=ev.data.slice(0,7);
+      if(mes!==mesAberto){
+        if(mesAberto!==null)h+='</div>';
+        const ano=mes.slice(0,4);
+        h+='<div class="sec-t">'+MESL[+mes.slice(5,7)-1]+(ano===anoAtual?'':' de '+ano)+'</div>'
+         +'<div class="card">';
+        mesAberto=mes;
+      }
       const cor=s.preenchidos<s.total?'warn':(s.confirmados===s.total?'ok':'mut');
       const txt=s.preenchidos<s.total?(s.total-s.preenchidos)+' vaga(s)':s.confirmados+'/'+s.total+' confirmados';
       h+='<div class="row" onclick="go(\'evento\',\''+ev.id+'\')">'
@@ -1053,7 +1192,7 @@ function vEscalas(){
         +'<div class="s">'+DOW[d.getDay()]+' &middot; culto às '+esc(ev.hora)
         +(temInfo(ev)?' &middot; '+ico('info',13)+' info':'')+'</div></div>'
         +'<span class="pill '+cor+'">'+txt+'</span><span class="chev">&#8250;</span></div>';});
-    h+='</div>';}
+    if(mesAberto!==null)h+='</div>';}
   const p=passados().slice(0,5);
   if(p.length){h+='<div class="sec-t">Anteriores</div><div class="card">';
     p.forEach(ev=>{const d=pd(ev.data);
@@ -1070,14 +1209,20 @@ function vEscalas(){
 function vEvento(id){
   const ev=evento(id); if(!ev)return '<div class="empty">Evento não encontrado</div>';
   const s=statusEvento(ev);
-  let h=voltarBar(ev.titulo);
+  const falta=s.preenchidos<s.total;
+  const pct=n=>s.total?Math.round(n/s.total*100):0;
+  let h='<div class="fixo"><button onclick="voltar()">&#8249; Voltar</button>'
+   +'<b>'+esc(ev.titulo)+'</b>'
+   +'<span class="pill '+(falta?'warn':'ok')+'">'+s.preenchidos+'/'+s.total+'</span></div>';
+  h+='<h1 id="tituloGrande" style="margin-top:2px">'+esc(ev.titulo)+'</h1>';
   h+='<p class="sub">'+fmtLong(ev.data)+' &middot; culto às '+esc(ev.hora)+'</p>';
   h+='<div class="pad"><div class="card" style="margin:0 0 12px;padding:14px 16px">'
     +'<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700">'
     +'<span>'+s.preenchidos+' de '+s.total+' posições</span>'
     +'<span style="color:var(--ok)">'+s.confirmados+' confirmados</span></div>'
-    +'<div class="bar" style="height:9px"><i style="width:'+(s.total?Math.round(s.preenchidos/s.total*100):0)+'%;'
-    +(s.preenchidos<s.total?'background:var(--warn)':'background:var(--ok)')+'"></i></div>'
+    +'<div class="bar bar2" style="height:9px">'
+    +'<i class="ocupado'+(falta?' falta':'')+'" style="width:'+pct(s.preenchidos)+'%"></i>'
+    +'<i class="conf" style="width:'+pct(s.confirmados)+'%"></i></div>'
     +(s.recusados?'<div style="color:var(--bad);font-size:13px;font-weight:600;margin-top:8px">'
       +s.recusados+' pessoa(s) precisam trocar esta data</div>':'')
     +'</div></div>';
@@ -1095,22 +1240,15 @@ function vEvento(id){
         +'Pedir troca da minha vaga</button>')
      +'</div>';
   }
-  h+='<div class="pad" style="display:flex;gap:8px;margin-bottom:6px">'
-    +(euPosso('escalas')?'<button class="btn-sm" style="flex:1" onclick="autoEscalar(\''+ev.id+'\')">Escalar automático</button>':'')
-    +'<button class="btn2 btn-sm" style="flex:1" onclick="compartilhar(\''+ev.id+'\')">Compartilhar</button></div>'
-    /* o número de quem falta vai no próprio botão: sem ele o líder tem de
-       abrir para descobrir se vale a pena cobrar */
-    +(euPosso('escalas')?'<div class="pad" style="margin-bottom:6px">'
-      +'<button class="btn2 btn-sm" style="width:100%'
-      +((s.preenchidos-s.confirmados)>0?';color:var(--warn);border-color:var(--warn)':'')
-      +'" onclick="cobrarEvento(\''+ev.id+'\')">'
-      +((s.preenchidos-s.confirmados)>0
-        ?'Notificar quem não confirmou ('+(s.preenchidos-s.confirmados)+')'
-        :'Notificar a equipe deste culto')
-      +'</button></div>':'')
-    +((euPosso('escalas')&&usaWhats())?'<div class="pad" style="margin-bottom:6px">'
-      +'<button class="btn2 btn-sm" style="width:100%" onclick="avisarEvento(\''+ev.id+'\',\'convocacao\')">'
-      +'Avisar no WhatsApp quem foi escalado</button></div>':'');
+  /* um botao principal — o proximo passo deste culto — e o resto no menu */
+  const acoes=acoesEvento(ev,s);
+  if(acoes.length)
+    h+='<div class="pad" style="display:flex;gap:8px;margin-bottom:6px">'
+      +'<button class="btn-sm" style="flex:1" onclick="'+acoes[0][1]+'">'+esc(acoes[0][0])+'</button>'
+      +(acoes.length>1
+        ?'<button class="btn2 btn-sm" style="flex:none;width:auto;padding:9px 16px" '
+         +'onclick="maisAcoesEvento(\''+ev.id+'\')">Mais&nbsp;&#8943;</button>':'')
+      +'</div>';
   const verContato=vejoContatos(ev);
   ev.teamIds.forEach(tid=>{const t=team(tid); if(!t)return;
     const ch=chegada(ev,tid);
@@ -1121,8 +1259,11 @@ function vEvento(id){
      +'<div class="card" style="border-left:4px solid '+t.cor+'">';
     t.funcoes.forEach(f=>{for(let i=0;i<(f.qtd||1);i++){
       const a=escalaDe(ev,tid,f.id,i); const p=a?pessoa(a.pessoaId):null;
+      /* "Aguardando" era o estado de quase toda vaga e aparecia quinze vezes
+         na mesma tela, abafando os dois selos que importam. O numero de
+         confirmados ja esta no alto; aqui so marcamos excecao. */
       const st=a?(a.status==='confirmado'?'<span class="pill ok">Confirmado</span>':
-        a.status==='recusado'?'<span class="pill bad">Precisa trocar</span>':'<span class="pill mut">Aguardando</span>'):
+        a.status==='recusado'?'<span class="pill bad">Precisa trocar</span>':''):
         '<span class="pill warn">Vago</span>';
       h+='<div class="slot"'+(euPosso('escalas')?' onclick="escolher(\''+ev.id+'\',\''+tid+'\',\''+f.id+'\','+i+')" style="cursor:pointer"':'')+'>'
         +'<div class="avatar" style="'+(p?'background:'+t.cor+'22;color:'+t.cor:'background:var(--warn-soft);color:var(--warn)')+'">'
@@ -1141,11 +1282,53 @@ function vEvento(id){
           :'')
         +'</div>';}});
     h+='</div>';});
-  if(euPosso('eventos'))
-    h+='<div class="gap"></div><div class="pad"><button class="btn2" onclick="editarEvento(\''+ev.id+'\')">Editar evento</button>'
-      +'<div class="gap"></div><button class="btn2 btn-d" onclick="apagarEvento(\''+ev.id+'\')">Excluir evento</button></div>';
+  /* Editar e Excluir vivem no menu "Mais": excluir um culto inteiro nao
+     merece um botao de largura cheia no fim de uma tela que se rola. */
   return h;
 }
+/* ---------- ACOES DO CULTO ----------
+   Eram ate quatro botoes de largura inteira, todos com o mesmo peso visual:
+   nada dizia por onde comecar. A lista abaixo esta em ordem do que falta
+   fazer neste culto; o primeiro vira o botao principal e o resto vai para um
+   menu. Excluir sai da tela e entra no menu, onde nao se toca sem querer. */
+function acoesEvento(ev,s){
+  const a=[];
+  if(euPosso('escalas')&&s.preenchidos<s.total)
+    a.push(['Escalar automático',"autoEscalar('"+ev.id+"')"]);
+  if(euPosso('escalas')){
+    const faltam=s.preenchidos-s.confirmados;
+    a.push([faltam>0?'Notificar quem não confirmou ('+faltam+')':'Notificar a equipe deste culto',
+      "cobrarEvento('"+ev.id+"')"]);
+  }
+  a.push(['Compartilhar',"compartilhar('"+ev.id+"')"]);
+  if(euPosso('escalas')&&usaWhats())
+    a.push(['Avisar no WhatsApp quem foi escalado',"avisarEvento('"+ev.id+"','convocacao')"]);
+  if(euPosso('eventos')){
+    a.push(['Editar evento',"editarEvento('"+ev.id+"')"]);
+    a.push(['Excluir evento',"apagarEvento('"+ev.id+"')",'btn-d']);
+  }
+  return a;
+}
+function maisAcoesEvento(id){
+  const ev=evento(id); if(!ev)return;
+  const resto=acoesEvento(ev,statusEvento(ev)).slice(1);
+  if(!resto.length)return;
+  openSheet('Este culto', resto.map(x=>
+    '<button class="btn2 '+(x[2]||'')+'" style="margin-bottom:10px" '
+    +'onclick="closeSheet();'+x[1]+'">'+esc(x[0])+'</button>').join(''));
+}
+
+/* A barra fina do topo so mostra o titulo depois que o titulo grande sai de
+   cena — senao o nome do culto apareceria duas vezes, parada, sem motivo. */
+let FIXO_MOSTRA=null;
+function conferirFixo(){
+  const barra=document.querySelector('.fixo'); if(!barra){FIXO_MOSTRA=null;return;}
+  const alvo=document.getElementById('tituloGrande');
+  const mostra=alvo?alvo.getBoundingClientRect().bottom<46:true;
+  if(mostra!==FIXO_MOSTRA){barra.classList.toggle('mostra',mostra);FIXO_MOSTRA=mostra;}
+}
+window.addEventListener('scroll',conferirFixo,{passive:true});
+
 /* ---- INFORMACOES DO CULTO ----------------------------------------------
    Um lugar so para o que a equipe precisa saber antes de chegar: o recado do
    lider e os links (ordem do culto, arquivo de midia, planilha). Quem abre o
@@ -1302,7 +1485,13 @@ function escolher(evId,tid,fid,idx){
       +'<button class="btn-sm" style="flex:1;background:var(--ok)" onclick="marcar(\''+atual.id+'\',\'confirmado\')">Confirmar</button>'
       +'<button class="btn2 btn-sm" style="flex:1" onclick="closeSheet();pedirTrocaUI(\''+atual.id+'\')">Abrir troca</button>'
       +'<button class="btn2 btn-sm" onclick="definirUI(\''+evId+'\',\''+tid+'\',\''+fid+'\','+idx+',\'\')">Remover</button></div>';}
-  h+='<div class="sec-t" style="margin:0 0 7px">Disponíveis</div><div class="card" style="margin:0">';
+  h+='<div class="sec-t" style="margin:0 0 7px">Disponíveis</div>';
+  if(aptos.length>8)
+    h+='<div class="busca" style="margin:0 0 10px">'+ico('lupa',18)
+     +'<input type="search" autocomplete="off" autocorrect="off" spellcheck="false" '
+     +'placeholder="Procurar nesta função" oninput="filtrarLinhas(this,\'#listaEscolher .row\')">'
+     +'</div>';
+  h+='<div class="card" id="listaEscolher" style="margin:0">';
   let n=0;
   aptos.forEach(p=>{
     const ind=ausente(p.id,ev.data), dup=usados.includes(p.id);
@@ -1311,10 +1500,12 @@ function escolher(evId,tid,fid,idx){
     const noMes=mc.mes[p.id]||0;
     const tag=ind?'<span class="pill bad">'+esc(motivoAusencia(p.id,ev.data)||'Indisponivel')+'</span>':dup?'<span class="pill warn">Já escalado</span>'
       :'<span class="pill '+(noMes?'mut':'ok')+'">'+noMes+'x no mês</span>';
-    h+='<div class="row" onclick="definirUI(\''+evId+'\',\''+tid+'\',\''+fid+'\','+idx+',\''+p.id+'\')">'
+    h+='<div class="row" data-busca="'+esc(p.nome)+'" '
+      +'onclick="definirUI(\''+evId+'\',\''+tid+'\',\''+fid+'\','+idx+',\''+p.id+'\')">'
       +'<div class="avatar" style="'+(ind?'opacity:.4':'')+'">'+esc(ini(p.nome))+'</div>'
       +'<div class="grow"><div class="t" style="'+(ind?'opacity:.5':'')+'">'+esc(p.nome)+'</div></div>'+tag+'</div>';});
   if(!n)h+='<div class="empty">Ninguém cadastrado nesta função.<br>Adicione em Pessoas.</div>';
+  else h+='<div class="empty" id="buscaVazia" style="display:none">Ninguém com esse nome nesta função.</div>';
   h+='</div>';
   openSheet('Escalar',h,null);
 }
@@ -1470,7 +1661,7 @@ function vEquipes(){
     DB.teams.length?numeros([[DB.teams.length,'equipes'],
       [DB.teams.reduce((n,t)=>n+t.funcoes.length,0),'funções'],
       [DB.pessoas.length,'pessoas']]):'');
-  h+=bannerConexao()+bannerNuvem();
+  h+=blocoAvisos([bannerConexao(),bannerNuvem()]);
   if(!DB.teams.length)h+='<div class="empty"><b>Nenhuma equipe ainda</b>'
     +'Crie os ministérios da sua igreja e as funções de cada um.</div>'
     +(euPosso('equipes')?'<div class="pad"><button onclick="novaEquipe()">Criar a primeira equipe</button>'
@@ -1486,7 +1677,9 @@ function vEquipes(){
        +'<div class="grow"><div class="t">'+esc(t.nome)+'</div>'
        +'<div class="s">'+t.funcoes.length+' funções &middot; '+vagasT+' por culto &middot; chega '
        +antecTexto(t.antecedencia==null?30:t.antecedencia)+'</div></div>'
-       +'<span class="pill '+(q>=vagasT?'ok':'warn')+'">'+q+' pessoas</span>'
+       /* verde dizia "esta tudo certo" para o que e so uma contagem; o verde
+          fica reservado para confirmacao, e o ambar para falta de gente */
+       +'<span class="pill '+(q>=vagasT?'mut':'warn')+'">'+q+' pessoas</span>'
        +'<span class="chev">&#8250;</span></div>';});
     h+='</div>';}
   return h;
@@ -1573,21 +1766,29 @@ function vPessoas(){
     euPosso('pessoas')?'<button class="add" aria-label="Nova pessoa" onclick="novaPessoa()">+</button>':'',
     DB.pessoas.length?numeros([[DB.pessoas.length,'voluntários'],[entraram,'já entraram'],
       [comPush,'com aviso']]):'');
-  h+=bannerConexao()+bannerNuvem();
+  h+=blocoAvisos([bannerConexao(),bannerNuvem()]);
   if(!DB.pessoas.length)return h+'<div class="empty"><b>Nenhum voluntário</b>'
     +'Toque no + para cadastrar. Basta nome e telefone.</div>';
+  h+=campoBusca('pessoas','Procurar voluntário');
   /* calculado uma vez, fora do laco: dentro dele isto varria a lista inteira
      de escalas uma vez por pessoa, por pessoa */
   const ciclo=cicloAtual();
   const mc=mapaCarga(inicioJanela(),ciclo);
-  const maxc=Math.max(1,...DB.pessoas.map(x=>mc.mes[x.id]||0));
+  /* Vermelho e para quem esta de fato sobrecarregado. Antes o corte era o
+     maior numero da lista: com todo mundo servindo 2x, a lista inteira ficava
+     vermelha — e cor que acende sempre deixa de ser aviso. O corte agora e a
+     media do mes mais uma escala. */
+  const soma=DB.pessoas.reduce((n,x)=>n+(mc.mes[x.id]||0),0);
+  const corte=Math.max(2,Math.ceil(soma/Math.max(1,DB.pessoas.length))+1);
   const ord=[...DB.pessoas].sort((a,b)=>mc.mes[a.id]-mc.mes[b.id]
-    ||mc.janela[a.id]-mc.janela[b.id]||a.nome.localeCompare(b.nome));
+    ||mc.janela[a.id]-mc.janela[b.id]||a.nome.localeCompare(b.nome))
+    .filter(x=>casa(x.nome,BUSCA.pessoas));
+  if(!ord.length)return h+'<div class="empty">Ninguém com esse nome.</div>';
   h+='<div class="card">';
   ord.forEach(p=>{const ts=p.teamIds.map(t=>{const x=team(t);return x&&x.nome;}).filter(Boolean).join(', ');
     const nInd=DB.indisp.filter(i=>i.pessoaId===p.id&&i.data>=hojeIso()).length;
     const c=mc.mes[p.id]||0;
-    const cor=c===0?'warn':(c>=maxc?'bad':'mut');
+    const cor=c===0?'warn':(c>=corte?'bad':'mut');
     h+='<div class="row" onclick="go(\'pessoa\',\''+p.id+'\')">'
      +'<div class="avatar"'+(temPainel(p)?' style="background:var(--brand-soft);color:var(--brand)"':'')+'>'
      +esc(ini(p.nome))+'</div>'
@@ -1810,7 +2011,7 @@ function vPerfil(){
   let h=hero('Perfil','Ajustes do app e da equipe','',
     numeros([[DB.pessoas.length,'pessoas'],[futuros().length,'cultos'],
       [trocasAbertas().length,'trocas abertas']]));
-  h+=bannerConexao()+bannerNuvem();
+  h+=blocoAvisos([bannerConexao(),bannerNuvem()]);
   if(p)h+='<div class="card"><div class="row" style="cursor:default">'
    +'<div class="avatar">'+esc(ini(p.nome))+'</div><div class="grow">'
    +'<div class="t">'+esc(p.nome)+' <span class="pill">'+(ehAdmin(p)?'admin':'líder')+'</span></div>'
@@ -4447,7 +4648,7 @@ function vMinha(){
     +ico('sino',21)+'</button>',
     lista.length?numeros([[lista.length,'convocações'],[confirmadas,'confirmadas'],
       [pend,'a responder']]):'');
-  h+=bannerConexao()+bannerNuvem()+bannerInstalar();
+  h+=blocoAvisos([bannerConexao(),bannerNuvem(),bannerInstalar()]);
   if(pend)h+='<div class="warnbox">&#9888; '+pend+' convocação(ões) esperando a sua resposta.</div>';
   const paraMim=trocasParaMim();
   if(paraMim.length)h+='<div class="warnbox" style="background:var(--brand-soft);color:var(--brand);cursor:pointer" '
@@ -4555,7 +4756,7 @@ function vTrocas(){
     numeros([[paraMim.length,'precisam de você'],[meusPedidos.length,'meus pedidos'],
       [trocasAbertas().length,'abertas no time']]));
 
-  h+=bannerConexao()+bannerNuvem();
+  h+=blocoAvisos([bannerConexao(),bannerNuvem()]);
   /* Pedido que o banco nao deixou este usuario montar por inteiro. Antes era
      descartado calado e a pessoa jurava que nao tinha chegado nada — que e
      exatamente o que acontecia. Agora o app diz o que houve e o que fazer. */
