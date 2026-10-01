@@ -1,4 +1,4 @@
-const CACHE = 'escala-v7';
+const CACHE = 'escala-v8';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 /* ---------- ATUALIZACAO ----------
@@ -87,6 +87,14 @@ self.addEventListener('message', e => {
    e a versão nova entra na próxima abertura (o app avisa quando chega). */
 const PRAZO_REDE = 6000;
 
+/* A PAGINA e caso a parte. Com cache-primeiro ela ficava uma abertura
+   atrasada: a pessoa publicava, abria o app e via a versao antiga; a nova so
+   entrava na vez seguinte. Entao, para a pagina, tentamos a rede primeiro —
+   mas com relogio curto e com a copia guardada pronta ao lado. Se a rede nao
+   responder em PRAZO_PAGINA (o iPhone acorda com a rede dormindo), servimos o
+   cache na hora. Nunca ha espera longa, e nunca ha tela branca. */
+const PRAZO_PAGINA = 2500;
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   let url;
@@ -99,11 +107,10 @@ async function responder(req) {
   const cache = await caches.open(CACHE);
   const guardado = await cache.match(req, { ignoreSearch: true });
 
-  const daRede = fetch(req).then(async r => {
-    if (!r || !r.ok) return r;
-    if (guardado && ehPagina(req)) avisarSeMudou(guardado.clone(), r.clone());
-    return await guardar(cache, req, r);
-  });
+  if (ehPagina(req)) return await responderPagina(req, cache, guardado);
+
+  /* daqui para baixo e so arquivo estatico: cache primeiro, atualiza por baixo */
+  const daRede = fetch(req).then(r => guardar(cache, req, r));
 
   if (guardado) { daRede.catch(() => {}); return await semDesvio(guardado); }
 
@@ -115,6 +122,29 @@ async function responder(req) {
       status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' }
     });
   }
+}
+
+/* Rede primeiro, cache como rede de seguranca. */
+async function responderPagina(req, cache, guardado) {
+  const daRede = fetch(req, { cache: 'no-store' }).then(r => guardar(cache, req, r));
+  try {
+    const r = await comPrazo(daRede, guardado ? PRAZO_PAGINA : PRAZO_REDE);
+    if (r && r.ok) return await semDesvio(r);
+  } catch (_) { daRede.catch(() => {}); }
+
+  if (guardado) {
+    /* servimos o cache agora; se a rede chegar depois e vier diferente, o app
+       mostra o aviso de versao nova em vez de trocar a tela no susto */
+    daRede.then(r => { if (r && r.ok) avisarSeMudou(guardado.clone(), r.clone()); })
+          .catch(() => {});
+    return await semDesvio(guardado);
+  }
+
+  const raiz = await cache.match('./index.html');
+  if (raiz) return await semDesvio(raiz);
+  return new Response('Sem conexao e sem copia guardada.', {
+    status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+  });
 }
 
 const ehPagina = req => req.mode === 'navigate' || /\/(index\.html)?(\?|$)/.test(new URL(req.url).pathname);
