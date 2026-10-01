@@ -91,6 +91,8 @@ function carregar() {
     'recusarTroca', 'permutasPara', 'trocaDaEscala', 'permutasAoAssumir',
     'expirarTrocas', 'trocaVencida', 'trocasParaMim',
     'pedirPermuta', 'minhasEscalas', 'vejoContatos', 'telE164', 'temTelefone', 'urlWhats',
+    'agendaUrl', 'agendaWebcal', 'linkGoogleAssinatura', 'dadosDoCompromisso',
+    'icsDeUmaEscala', 'linkGoogleAgenda',
     // informacoes do culto
     'temInfo', 'urlOk',
     // acesso

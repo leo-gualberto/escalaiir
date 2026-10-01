@@ -412,6 +412,38 @@ teste('link do WhatsApp leva o número e o texto', () => {
   ok(url.indexOf('https://wa.me/') === 0, 'no navegador comum é wa.me: ' + url);
 });
 
+/* ---------- agenda ---------- */
+
+teste('endereços da assinatura da agenda', () => {
+  const t = 'abc123';
+  const u = app.agendaUrl(t);
+  ok(u.indexOf('/functions/v1/agenda?t=abc123') > 0, u);
+  igual(app.agendaWebcal(t), u.replace(/^https:/, 'webcal:'), 'o iPhone abre por webcal');
+  const g = app.linkGoogleAssinatura(t);
+  ok(g.indexOf('calendar.google.com') > 0 && g.indexOf('cid=') > 0, g);
+  ok(g.indexOf(encodeURIComponent(u)) > 0, 'o endereço vai codificado no cid');
+});
+
+teste('o compromisso começa na chegada, não no início do culto', () => {
+  const db = mundo();
+  db.teams[0].antecedencia = 60;
+  db.eventos = [Object.assign(evento(E1, '2027-03-07'), { hora: '19:00', chegadas: { [T1]: '18:00' } })];
+  db.escalas = [escala(A1, E1, VOZ, ANA)];
+  usar(db);
+  const c = app.dadosDoCompromisso(A1);
+  /* comparar por hora do relógio quebraria fora do fuso de Brasília — o que
+     importa é a duração e o que está escrito para a pessoa */
+  igual((c.fim - c.inicio) / 3600000, 3, 'da chegada (18h) ao fim (21h) são 3 horas');
+  ok(c.detalhe.indexOf('Chegada às 18:00') > 0, c.detalhe);
+  ok(c.titulo.indexOf('Vocal') === 0, 'o título começa pela função: ' + c.titulo);
+
+  const ics = app.icsDeUmaEscala(A1);
+  ok(ics.indexOf('BEGIN:VEVENT') > 0 && ics.indexOf('END:VCALENDAR') > 0, 'arquivo .ics bem formado');
+  ok(ics.indexOf('TRIGGER:-P1D') > 0, 'lembra um dia antes');
+  ok(app.linkGoogleAgenda(A1).indexOf('https://calendar.google.com/calendar/render') === 0,
+    'o link do evento avulso vai para o formulário do Google');
+});
+
 /* ---------- troca casada ---------- */
 
 teste('ao assumir, aparecem as minhas datas que a outra pessoa pode cobrir', () => {

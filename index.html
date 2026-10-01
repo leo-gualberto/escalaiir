@@ -233,6 +233,12 @@ h2{font-size:17px}
 .okbox{background:var(--ok-soft);color:var(--ok);font-size:13px;font-weight:600;
   padding:11px 14px;margin:0 16px 12px;border-radius:0 12px 12px 0;border-left:4px solid var(--ok)}
 
+/* botao que e link de verdade (webcal:, Google): precisa parecer botao */
+.bt-ag{display:block;text-align:center;text-decoration:none;font-weight:700;
+  font-size:16px;padding:14px 16px;border-radius:14px;margin-bottom:10px;
+  background:var(--brand);color:var(--on-brand)}
+.bt-ag:active{opacity:.85}
+
 /* --- botoes --- */
 /* color herdada de --on-brand para nunca ficar branco sobre cor clara no escuro */
 button,.btn{border-radius:13px;padding:14px 16px;color:var(--on-brand)}
@@ -3549,6 +3555,12 @@ function agendaUrl(t){return NUVEM_URL+'/functions/v1/agenda?t='+encodeURICompon
    direto, sem passar por Ajustes */
 function agendaWebcal(t){return agendaUrl(t).replace(/^https?:/,'webcal:');}
 const ehApple=()=>/iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent||'');
+/* O Google aceita o endereco do calendario como parametro cid: abre a tela
+   dele ja perguntando "adicionar este calendario?". E um toque e confirmar,
+   em vez de copiar o endereco e procurar o menu "De URL". */
+function linkGoogleAssinatura(t){
+  return 'https://calendar.google.com/calendar/u/0/r?cid='+encodeURIComponent(agendaUrl(t));
+}
 
 /* Roda depois de conectar. Se a migração ainda nao foi aplicada, a chamada
    devolve erro e o app simplesmente nao oferece o recurso — ninguém vê nada
@@ -3562,9 +3574,8 @@ async function verificarAgenda(){
     if(error)return;
     AGENDA_TEM=data===true;
   }catch(e){return;}
-  let resposta=null; try{resposta=localStorage.getItem(AGENDA_CONVITE);}catch(e){}
-  /* o convite aparece uma vez por aparelho, e só para quem ainda nao ligou */
-  if(!AGENDA_TEM&&!resposta&&!JA_INTERROMPI){JA_INTERROMPI=true;convidarAgenda();}
+  /* so para quem ainda nao ligou, e respeitando o "agora nao" por duas semanas */
+  if(!AGENDA_TEM&&devoConvidarAgenda()&&!JA_INTERROMPI){JA_INTERROMPI=true;convidarAgenda();}
   render();
 }
 
@@ -3589,14 +3600,32 @@ const linhaAg=(icone,t,s)=>'<div class="row" style="cursor:default;align-items:f
  +'<div class="avatar" style="flex:none">'+ico(icone,18)+'</div>'
  +'<div class="grow"><div class="t">'+t+'</div><div class="s">'+s+'</div></div></div>';
 
+/* "Agora nao" nao e "nunca mais": o convite volta daqui a duas semanas, ate
+   tres vezes. Sumir para sempre e como a agenda ficou com zero assinaturas
+   enquanto estava pronta para usar. */
+const AGENDA_ESPERA=14*86400000;
+function conviteAgendaLido(){
+  try{return JSON.parse(localStorage.getItem(AGENDA_CONVITE)||'{}')||{};}catch(e){return {};}
+}
+function conviteAgendaGrava(v){
+  try{localStorage.setItem(AGENDA_CONVITE,JSON.stringify(v));}catch(e){}
+}
+function devoConvidarAgenda(){
+  const m=conviteAgendaLido();
+  if(m.estado==='ativou')return false;
+  if((m.vezes||0)>=3)return false;
+  if(m.quando&&Date.now()-new Date(m.quando).getTime()<AGENDA_ESPERA)return false;
+  return true;
+}
 function adiarAgenda(){
-  try{localStorage.setItem(AGENDA_CONVITE,'depois');}catch(e){}
+  const m=conviteAgendaLido();
+  conviteAgendaGrava({estado:'depois',quando:new Date().toISOString(),vezes:(m.vezes||0)+1});
   closeSheet(); toast('Sem problema. Está em Conta quando quiser.');
 }
 
 async function ligarAgenda(){
   if(!naNuvem())return toast('Precisa de internet para gerar o seu endereço');
-  try{localStorage.setItem(AGENDA_CONVITE,'ativou');}catch(e){}
+  conviteAgendaGrava({estado:'ativou',quando:new Date().toISOString()});
   try{
     const{data,error}=await SB.rpc('meu_token_agenda');
     if(error||!data)throw new Error(error?error.message:'o servidor não devolveu o endereço');
@@ -3615,35 +3644,37 @@ function telaAgenda(){
   const t=AGENDA_TOKEN||agendaLocal();
   if(!t)return ligarAgenda();
   const u=agendaUrl(t);
-  let h='<div class="card" style="margin:0 0 12px;padding:12px 14px">'
+  const btnApple='<a class="bt-ag" href="'+esc(agendaWebcal(t))+'">'
+   +'Assinar no Calendário do iPhone</a>';
+  const btnGoogle='<a class="bt-ag" href="'+esc(linkGoogleAssinatura(t))+'" '
+   +'target="_blank" rel="noopener">Adicionar ao Google Agenda</a>';
+  let h='<p class="sub" style="margin:0 0 14px;padding:0">Um toque e confirmar. '
+   +'Depois disso a sua escala aparece junto com os seus compromissos e se atualiza '
+   +'sozinha.</p>'
+   +(ehApple()?btnApple+btnGoogle:btnGoogle+btnApple)
+   +'<div class="gap"></div>'
+   +'<button class="btn2" onclick="copiarAgenda()">Copiar o endereço</button>'
+   +'<p class="sub" style="font-size:13px;margin:8px 2px 14px;line-height:1.6">'
+   +'Só precisa disto se os botões acima não funcionarem no seu aparelho.</p>'
+   +'<div class="card" style="margin:0 0 12px;padding:12px 14px">'
    +'<div style="font-family:ui-monospace,monospace;font-size:11.5px;word-break:break-all;'
-   +'line-height:1.55;color:var(--muted)">'+esc(u)+'</div></div>'
-   +'<button onclick="copiarAgenda()">Copiar endereço</button><div class="gap"></div>';
-  if(ehApple())h+='<a class="btn2" href="'+esc(agendaWebcal(t))+'" '
-   +'style="display:block;text-align:center;text-decoration:none;line-height:26px">'
-   +'Abrir no Calendário</a><div class="gap"></div>';
+   +'line-height:1.55;color:var(--muted)">'+esc(u)+'</div></div>';
   h+='<p class="sub" style="font-size:13px;line-height:1.6;margin:0 0 16px">'
    +'Este endereço é só seu e mostra a sua escala para quem tiver o link. '
    +'Trate como senha: não mande no grupo.</p>';
 
-  h+='<div class="sec-t">No iPhone</div><div class="card" style="margin:0 0 14px">'
-   +passoAg(1,'Toque em <b>Abrir no Calendário</b> aqui em cima e confirme em <b>Assinar</b>.')
-   +passoAg(2,'Não apareceu? Copie o endereço e vá em <b>Ajustes › Calendário › Contas › '
-     +'Adicionar conta › Outra › Adicionar calendário assinado</b>.')
-   +'</div>';
-
-  h+='<div class="sec-t">No Google Agenda</div><div class="card" style="margin:0 0 14px">'
-   +passoAg(1,'Copie o endereço e abra <b>calendar.google.com</b> <b>num computador</b>.')
-   +passoAg(2,'Ao lado de <b>Outros calendários</b>, clique no <b>+</b> e escolha <b>De URL</b>.')
-   +passoAg(3,'Cole o endereço e clique em <b>Adicionar calendário</b>.')
-   +passoAg(4,'No celular, o app do Google Agenda mostra sozinho depois de alguns minutos.')
+  h+='<div class="sec-t">Se o botão não abrir</div><div class="card" style="margin:0 0 14px">'
+   +passoAg(1,'<b>iPhone:</b> copie o endereço e vá em <b>Ajustes › Apps › Calendário › '
+     +'Contas › Adicionar conta › Outra › Adicionar calendário assinado</b>.')
+   +passoAg(2,'<b>Google:</b> abra <b>calendar.google.com</b> num computador, clique no '
+     +'<b>+</b> ao lado de <b>Outros calendários</b>, escolha <b>De URL</b> e cole.')
    +'</div>'
    +'<p class="sub" style="font-size:13px;line-height:1.6;margin:0 0 16px">'
-   +'O app do Google no celular não tem a opção de adicionar por endereço — por isso '
-   +'o cadastro é feito uma vez no computador. E o Google só reconfere de 8 em 8 ou '
-   +'de 24 em 24 horas, sem botão de atualizar: uma escala de amanhã pode não aparecer '
-   +'a tempo. Para uma data que está chegando, use o botão <b>de adicionar à agenda</b> '
-   +'na própria escala, em Minha escala. No iPhone o intervalo é bem menor.</p>';
+   +'Com que rapidez muda: o <b>iPhone</b> reconfere em intervalos curtos; o <b>Google</b> '
+   +'só de 8 em 8 ou de 24 em 24 horas, e não tem botão de atualizar. Então a agenda é '
+   +'ótima para enxergar o mês, mas quem avisa de uma troca de última hora é a '
+   +'<b>notificação</b> do app. Para uma data que está chegando, o botão de calendário '
+   +'na própria escala (em Minha escala) cria o compromisso na hora.</p>';
 
   h+='<div class="gap"></div><button class="btn2 btn-d" onclick="trocarAgenda()">'
    +'Trocar o endereço</button>'
