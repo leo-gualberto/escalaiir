@@ -689,6 +689,25 @@ function tab(n){recuarHistorico(PASSOS);PILHA.length=0;VIEW={n,id:null};render()
    so comeca do topo quando e uma tela que a pessoa ainda nao tinha aberto. */
 const ROLAGEM={};
 let TELA_ATUAL=null;
+/* O proprio navegador tenta restaurar a rolagem quando a pessoa usa o botao
+   voltar, e faz isso DEPOIS de nos — sobrescrevendo a posicao certa com a
+   que ele guardou (quase sempre o topo). Aqui dizemos que a rolagem e por
+   nossa conta. */
+try{ if('scrollRestoration' in history) history.scrollRestoration='manual'; }catch(_){}
+
+/* Reposicionar logo apos trocar o innerHTML nao basta: o navegador ainda nao
+   mediu a pagina nova, entao um y maior que a altura "antiga" e cortado para
+   o que cabe — numa lista longa, isso vira voltar pro topo. Lemos uma medida
+   para forcar a conta, e conferimos de novo no quadro seguinte, quando
+   imagens e fontes ja entraram. */
+function irPara(y){
+  if(!y){window.scrollTo(0,0);return;}
+  try{ void document.documentElement.scrollHeight; }catch(_){}
+  window.scrollTo(0,y);
+  requestAnimationFrame(()=>{
+    if(Math.abs((window.scrollY||0)-y)>2)window.scrollTo(0,y);
+  });
+}
 const chaveTela=()=>VIEW.n+':'+(VIEW.id||'');
 
 /* O campo em que a pessoa esta digitando sobrevive ao redesenho: guardamos
@@ -721,7 +740,7 @@ function trocarTela(a,chave,desenhar){
   const foco=guardarFoco();
   a.innerHTML=desenhar();
   TELA_ATUAL=chave;
-  window.scrollTo(0,y);
+  irPara(y);
   devolverFoco(foco);
 }
 
