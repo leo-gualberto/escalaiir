@@ -583,6 +583,85 @@ teste('código gerado localmente tem o formato esperado', () => {
   ok(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/.test(c), 'sem letras que se confundem: ' + c);
 });
 
+/* ---------- escopo por equipe ---------- */
+const T2 = ID(60), SLIDE = ID(61), DUDA = ID(4);
+/* duas equipes no mesmo culto: Louvor (T1) e Projeção (T2), e a Duda,
+   que lidera só Projeção */
+function mundoComProjecao() {
+  const db = mundo();
+  db.teams.push({ id: T2, nome: 'Projeção', cor: '#0071A4', antecedencia: 45,
+    funcoes: [{ id: SLIDE, nome: 'Slide', qtd: 1 }] });
+  db.pessoas.push(Object.assign(pessoa(DUDA, 'Duda', [SLIDE], { escalas: true, pessoas: true, escopo: [T2] }),
+    { teamIds: [T2] }));
+  db.pessoas.find(p => p.id === CAIO).funcaoIds.push(SLIDE);
+  db.pessoas.find(p => p.id === CAIO).teamIds.push(T2);
+  db.eventos[0].teamIds = [T1, T2];
+  return db;
+}
+
+teste('líder sem equipes marcadas vale para a igreja inteira', () => {
+  const db = usar(mundoComProjecao());
+  const bia = db.pessoas.find(p => p.id === BIA);
+  bia.perms = { escalas: true };
+  igual(app.escopoDe(bia), null);
+  ok(app.podeEquipe(bia, 'escalas', T1) && app.podeEquipe(bia, 'escalas', T2));
+});
+
+teste('líder de uma equipe só escala a própria equipe', () => {
+  const db = usar(mundoComProjecao());
+  const duda = db.pessoas.find(p => p.id === DUDA);
+  ok(app.podeEquipe(duda, 'escalas', T2), 'deveria poder Projeção');
+  ok(!app.podeEquipe(duda, 'escalas', T1), 'não deveria poder Louvor');
+  ok(!app.podeEquipe(duda, 'trocas', T2), 'sem a permissão, o escopo não concede nada');
+});
+
+teste('administrador nunca fica preso a um escopo', () => {
+  const db = usar(mundoComProjecao());
+  const ana = db.pessoas.find(p => p.id === ANA);
+  ana.perms = { admin: true, escopo: [T2] };
+  igual(app.escopoDe(ana), null);
+  ok(app.podeEquipe(ana, 'escalas', T1));
+});
+
+teste('líder de equipe só mexe em quem é da equipe dele', () => {
+  const db = usar(mundoComProjecao());
+  const duda = db.pessoas.find(p => p.id === DUDA);
+  const bia = db.pessoas.find(p => p.id === BIA);   // só Louvor
+  const caio = db.pessoas.find(p => p.id === CAIO); // Louvor e Projeção
+  ok(!app.podePessoa(duda, 'pessoas', bia), 'Bia é só do Louvor');
+  ok(app.podePessoa(duda, 'pessoas', caio), 'Caio também é de Projeção');
+  ok(app.podePessoa(duda, 'pessoas', { teamIds: [] }), 'quem ainda não tem equipe pode ser completado');
+});
+
+teste('escala automática do líder de equipe não toca nas outras equipes', () => {
+  const db = mundoComProjecao();
+  db.escalas = [escala(A1, E1, VOZ, BIA)];
+  usar(db);
+  app.gerarEscala(db.eventos[0], true, [T2]);
+  igual(escaladoEm(db, VOZ), BIA, 'o Louvor tinha de continuar como estava');
+  ok(!escaladoEm(db, TEC), 'a vaga vazia do Louvor não é dele para preencher');
+  ok(!!escaladoEm(db, SLIDE), 'a vaga de Projeção deveria ser preenchida');
+});
+
+teste('a mesma pessoa não entra em duas equipes no mesmo culto', () => {
+  const db = mundoComProjecao();
+  db.pessoas = db.pessoas.filter(p => p.id === CAIO || p.id === DUDA || p.id === ANA);
+  db.escalas = [escala(A1, E1, VOZ, CAIO)];
+  usar(db);
+  db.pessoas.find(p => p.id === DUDA).funcaoIds = [];   // a Duda só lidera
+  app.gerarEscala(db.eventos[0], false, [T2]);
+  ok(escaladoEm(db, SLIDE) !== CAIO, 'Caio já está no Louvor nesse culto');
+});
+
+teste('a contagem do líder de equipe considera só as vagas dele', () => {
+  const db = usar(mundoComProjecao());
+  db.sessao = DUDA;
+  const s = app.statusEscopo(db.eventos[0]);
+  igual(s.total, 1, 'Projeção tem uma vaga');
+  igual(app.statusEvento(db.eventos[0]).total, 3, 'o culto inteiro tem três');
+  igual(app.pessoasNoEscopo().map(p => p.nome).sort(), ['Caio', 'Duda']);
+});
+
 /* ---------- execução ---------- */
 for (const [nome, fn] of casos) {
   try { fn(); passou++; console.log('  ok   ' + nome); }

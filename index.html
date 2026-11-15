@@ -436,6 +436,83 @@ function souEu(){return pessoa(DB.sessao);}
 function euPosso(k){return pode(souEu(),k);}
 function exige(k){if(euPosso(k))return true;toast('Você não tem permissão para isso');return false;}
 
+/* ---------- ESCOPO POR EQUIPE ----------
+   Uma permissao pode valer para a igreja inteira, como sempre foi, ou so para
+   algumas equipes: o lider de Projecao monta a escala de Projecao, cadastra
+   quem e de Projecao, ajusta as funcoes de Projecao — e enxerga o culto
+   inteiro sem poder mexer no que e dos outros.
+
+   O escopo mora em perms.escopo (lista de ids de equipe; perms.equipes ja e
+   a permissao de criar equipes). Ausente ou vazio =
+   igreja inteira, que e o caso de todo lider que ja existia. Administrador
+   nunca tem escopo. Criar cultos nao e escopado: o calendario e um so.
+
+   Isto e regra do app, como as demais permissoes: o banco separa uma igreja
+   da outra, mas dentro da mesma igreja quem garante a divisao por equipe e
+   esta camada. */
+function escopoDe(p){
+  if(!p||!p.perms||p.perms.admin)return null;
+  const e=p.perms.escopo;
+  return Array.isArray(e)&&e.length?e:null;
+}
+function podeEquipe(p,k,tid){
+  if(!pode(p,k))return false;
+  const e=escopoDe(p);
+  return !e||(!!tid&&e.indexOf(tid)>=0);
+}
+/* Uma pessoa esta no meu escopo se estiver em alguma das minhas equipes. Quem
+   ainda nao tem equipe nenhuma tambem: e o caso de quem acabou de chegar e
+   ainda nao recebeu funcao, e alguem precisa poder completar o cadastro. */
+function podePessoa(p,k,alvo){
+  if(!pode(p,k))return false;
+  const e=escopoDe(p); if(!e)return true;
+  if(!alvo)return false;
+  const ts=alvo.teamIds||[];
+  return !ts.length||ts.some(t=>e.indexOf(t)>=0);
+}
+const euPossoEquipe=(k,tid)=>podeEquipe(souEu(),k,tid);
+const euPossoPessoa=(k,alvo)=>podePessoa(souEu(),k,alvo);
+const meuEscopo=()=>escopoDe(souEu());
+const noMeuEscopo=tid=>{const e=meuEscopo();return !e||e.indexOf(tid)>=0;};
+function exigeEquipe(k,tid){
+  if(euPossoEquipe(k,tid))return true;
+  toast(euPosso(k)?'Essa equipe não está sob sua liderança':'Você não tem permissão para isso');
+  return false;
+}
+function exigePessoa(k,alvo){
+  if(euPossoPessoa(k,alvo))return true;
+  toast(euPosso(k)?'Essa pessoa não está nas suas equipes':'Você não tem permissão para isso');
+  return false;
+}
+/* Estrutura da igreja — criar ou excluir uma equipe inteira — e da liderança
+   geral, nao de quem cuida de uma equipe so. */
+function exigeGeral(k){
+  if(euPosso(k)&&!meuEscopo())return true;
+  toast(euPosso(k)?'Isso é com a liderança geral':'Você não tem permissão para isso');
+  return false;
+}
+/* nomes das equipes de um escopo, para os rotulos ("Projeção e Palco") */
+function trocaNoEscopo(t){
+  const e=meuEscopo(); if(!e)return true;
+  const a=escalaPorId(t.escalaId); return !!a&&e.indexOf(a.teamId)>=0;
+}
+function pessoasNoEscopo(){
+  const e=meuEscopo(); if(!e)return DB.pessoas;
+  return DB.pessoas.filter(p=>!(p.teamIds||[]).length||p.teamIds.some(t=>e.indexOf(t)>=0));
+}
+/* o mesmo que statusEvento, contando so as equipes de quem esta olhando */
+function statusEscopo(ev){
+  const e=meuEscopo(); if(!e)return statusEvento(ev);
+  const total=slotsDoEvento(ev).filter(x=>e.indexOf(x.teamId)>=0).length;
+  const chk=DB.escalas.filter(a=>a.eventoId===ev.id&&e.indexOf(a.teamId)>=0);
+  return{total,preenchidos:chk.length,confirmados:chk.filter(a=>a.status==='confirmado').length,
+    recusados:chk.filter(a=>a.status==='recusado').length};
+}
+function nomesEscopo(e){
+  const ns=(e||[]).map(id=>{const t=DB.teams.find(x=>x.id===id);return t&&t.nome;}).filter(Boolean);
+  return ns.length<=1?(ns[0]||''):ns.slice(0,-1).join(', ')+' e '+ns[ns.length-1];
+}
+
 let DB=load();
 
 function vazio(){return{teams:[],pessoas:[],eventos:[],escalas:[],indisp:[],
@@ -654,10 +731,14 @@ function candidatos(ev,tid,fid){
 /* Emparelhamento maximo (algoritmo de Kuhn) para nao "desperdicar" especialistas:
    quem so toca teclado nao e gasto numa vaga de vocal. A ordem de preferencia
    dentro de cada vaga e por menor carga, garantindo o rodizio. */
-function gerarEscala(ev,sobrescrever){
-  if(sobrescrever)DB.escalas=DB.escalas.filter(a=>a.eventoId!==ev.id);
+/* equipes (opcional): so mexe nas vagas dessas equipes. O lider de Projecao
+   refaz Projecao sem tocar no Louvor. "ocupados" continua olhando o culto
+   inteiro: quem ja esta no Louvor nesse dia nao entra tambem em Projecao. */
+function gerarEscala(ev,sobrescrever,equipes){
+  const dentro=tid=>!equipes||equipes.indexOf(tid)>=0;
+  if(sobrescrever)DB.escalas=DB.escalas.filter(a=>a.eventoId!==ev.id||!dentro(a.teamId));
   const ocupados=new Set(DB.escalas.filter(a=>a.eventoId===ev.id).map(a=>a.pessoaId));
-  const abertos=slotsDoEvento(ev).filter(s=>!escalaDe(ev,s.teamId,s.funcaoId,s.idx));
+  const abertos=slotsDoEvento(ev).filter(s=>dentro(s.teamId)&&!escalaDe(ev,s.teamId,s.funcaoId,s.idx));
   /* tudo calculado de uma vez: antes, cada comparacao do sort varria a lista
      inteira de escalas para descobrir a ultima vez que a pessoa serviu */
   /* o ciclo e o do MES DO CULTO, nao o de hoje: montar em setembro a escala
@@ -943,7 +1024,7 @@ function renderInterno(){
   const raiz={evento:painel?'escalas':'minha',equipe:'equipes',pessoa:'pessoas',lembretes:'perfil',
     avisos:painel?'perfil':'minha'}[VIEW.n]||VIEW.n;
   const barra=navHtml(itens,raiz,{
-    trocas:trocasParaMim().length+(painel&&pode(me,'trocas')?trocasAbertas().filter(t=>!t.paraId).length:0),
+    trocas:trocasParaMim().length+(painel&&pode(me,'trocas')?trocasAbertas().filter(t=>!t.paraId&&trocaNoEscopo(t)).length:0),
     minha:naoLidos(), perfil:painel?naoLidos():0});
   /* a barra quase nunca muda; reescreve-la a cada toque so apaga o foco */
   if(nav.innerHTML!==barra)nav.innerHTML=barra;
@@ -977,7 +1058,7 @@ function roteiroInicial(){
 
 /* Estrutura comum de igreja: so equipes e funcoes, nenhuma pessoa */
 function estruturaPronta(){
-  if(!exige('equipes'))return;
+  if(!exigeGeral('equipes'))return;
   if(DB.teams.length&&!confirm('Isso adiciona equipes novas às que já existem. Continuar?'))return;
   const modelo=[
     ['Louvor','#3634A3',60,[['Ministro',1],['Vocal',2],['Violão',1],['Teclado',1],['Baixo',1],['Bateria',1]]],
@@ -1113,7 +1194,9 @@ function rodape(){
 }
 function hero(titulo,sub,btn,extra){
   const me=souEu(), painel=temPainel(me);
-  const selo=painel?(ehAdmin(me)?'Administrador':'Painel do líder'):'Voluntário';
+  const escopo=escopoDe(me);
+  const selo=painel?(ehAdmin(me)?'Administrador'
+    :(escopo?'Líder · '+nomesEscopo(escopo):'Painel do líder')):'Voluntário';
   const org=(DB.config&&DB.config.igreja)||'';
   return '<div class="hero"><div class="hero-top">'
    +'<span class="hero-badge">'+selo+'</span>'
@@ -1132,9 +1215,9 @@ const numeros=arr=>'<div class="hero-num">'+arr.map(x=>'<div><b>'+x[0]+'</b><spa
 /* ============ ABA: ESCALAS ============ */
 function vEscalas(){
   const f=futuros();
-  const vagas=f.reduce((n,e)=>{const s=statusEvento(e);return n+(s.total-s.preenchidos);},0);
-  const conf=f.reduce((n,e)=>n+statusEvento(e).confirmados,0);
-  const tr=trocasAbertas();
+  const vagas=f.reduce((n,e)=>{const s=statusEscopo(e);return n+(s.total-s.preenchidos);},0);
+  const conf=f.reduce((n,e)=>n+statusEscopo(e).confirmados,0);
+  const tr=trocasAbertas().filter(trocaNoEscopo);
   let h=hero('Escalas','Cultos e eventos da sua igreja',
     euPosso('eventos')?'<button class="add" aria-label="Novo culto" onclick="novoEvento()">+</button>':'',
     f.length?numeros([[f.length,'próximos cultos'],[vagas,'vagas abertas'],[conf,'confirmados']]):'');
@@ -1175,7 +1258,7 @@ function vEscalas(){
        nenhuma marca de onde um mes acabava */
     const anoAtual=hojeIso().slice(0,4);
     let mesAberto=null;
-    f.forEach(ev=>{const s=statusEvento(ev), d=pd(ev.data);
+    f.forEach(ev=>{const s=statusEscopo(ev), d=pd(ev.data);
       const mes=ev.data.slice(0,7);
       if(mes!==mesAberto){
         if(mesAberto!==null)h+='</div>';
@@ -1184,8 +1267,9 @@ function vEscalas(){
          +'<div class="card">';
         mesAberto=mes;
       }
-      const cor=s.preenchidos<s.total?'warn':(s.confirmados===s.total?'ok':'mut');
-      const txt=s.preenchidos<s.total?(s.total-s.preenchidos)+' vaga(s)':s.confirmados+'/'+s.total+' confirmados';
+      const cor=!s.total?'mut':s.preenchidos<s.total?'warn':(s.confirmados===s.total?'ok':'mut');
+      const txt=!s.total?'sem sua equipe':s.preenchidos<s.total?(s.total-s.preenchidos)+' vaga(s)'
+        :s.confirmados+'/'+s.total+' confirmados';
       h+='<div class="row" onclick="go(\'evento\',\''+ev.id+'\')">'
         +'<div class="dchip'+(ev.data===hojeIso()?' hoje':'')+'"><b>'+d.getDate()+'</b><span>'+MES[d.getMonth()]+'</span></div>'
         +'<div class="grow"><div class="t">'+esc(ev.titulo)+'</div>'
@@ -1252,6 +1336,8 @@ function vEvento(id){
   const verContato=vejoContatos(ev);
   ev.teamIds.forEach(tid=>{const t=team(tid); if(!t)return;
     const ch=chegada(ev,tid);
+    /* ve o culto inteiro, mexe so no que e da sua equipe */
+    const podeAqui=euPossoEquipe('escalas',tid);
     h+='<div class="teamhead"><span class="dot" style="background:'+t.cor+'"></span>'
      +'<h2>'+esc(t.nome)+'</h2>'
      +'<span class="pill" style="background:'+t.cor+'22;color:'+t.cor+'">chegar '+esc(ch)
@@ -1265,11 +1351,11 @@ function vEvento(id){
       const st=a?(a.status==='confirmado'?'<span class="pill ok">Confirmado</span>':
         a.status==='recusado'?'<span class="pill bad">Precisa trocar</span>':''):
         '<span class="pill warn">Vago</span>';
-      h+='<div class="slot"'+(euPosso('escalas')?' onclick="escolher(\''+ev.id+'\',\''+tid+'\',\''+f.id+'\','+i+')" style="cursor:pointer"':'')+'>'
+      h+='<div class="slot"'+(podeAqui?' onclick="escolher(\''+ev.id+'\',\''+tid+'\',\''+f.id+'\','+i+')" style="cursor:pointer"':'')+'>'
         +'<div class="avatar" style="'+(p?'background:'+t.cor+'22;color:'+t.cor:'background:var(--warn-soft);color:var(--warn)')+'">'
         +(p?esc(ini(p.nome)):'+')+'</div>'
         +'<div class="grow"><div class="fn">'+esc(f.nome)+'</div>'
-        +'<div class="nm'+(p?'':' vazio')+'">'+(p?esc(p.nome):'Toque para escalar')+'</div>'
+        +'<div class="nm'+(p?'':' vazio')+'">'+(p?esc(p.nome):(podeAqui?'Toque para escalar':'Vago'))+'</div>'
         +((p&&verContato&&p.telefone)
           ?'<div style="font-size:12.5px;color:var(--muted);margin-top:1px">'+esc(p.telefone)+'</div>'
           :'')
@@ -1293,10 +1379,11 @@ function vEvento(id){
    menu. Excluir sai da tela e entra no menu, onde nao se toca sem querer. */
 function acoesEvento(ev,s){
   const a=[];
-  if(euPosso('escalas')&&s.preenchidos<s.total)
-    a.push(['Escalar automático',"autoEscalar('"+ev.id+"')"]);
-  if(euPosso('escalas')){
-    const faltam=s.preenchidos-s.confirmados;
+  const se=statusEscopo(ev), meu=meuEscopo();
+  if(euPosso('escalas')&&se.preenchidos<se.total)
+    a.push([meu?'Escalar '+nomesEscopo(meu):'Escalar automático',"autoEscalar('"+ev.id+"')"]);
+  if(euPosso('escalas')&&(!meu||se.total)){
+    const faltam=se.preenchidos-se.confirmados;
     a.push([faltam>0?'Notificar quem não confirmou ('+faltam+')':'Notificar a equipe deste culto',
       "cobrarEvento('"+ev.id+"')"]);
   }
@@ -1422,9 +1509,11 @@ function editarInfoCulto(evId){
 }
 
 function autoEscalar(id){if(!exige('escalas'))return;const ev=evento(id);
-  const s=statusEvento(ev);
-  if(s.preenchidos&&!confirm('Refazer a escala inteira deste evento?')){gerarEscala(ev,false);render();return;}
-  gerarEscala(ev,s.preenchidos>0);render();}
+  const meu=meuEscopo();
+  const jaTem=DB.escalas.some(a=>a.eventoId===ev.id&&(!meu||meu.indexOf(a.teamId)>=0));
+  if(jaTem&&!confirm(meu?'Refazer a escala de '+nomesEscopo(meu)+' neste culto?'
+    :'Refazer a escala inteira deste evento?')){gerarEscala(ev,false,meu);render();return;}
+  gerarEscala(ev,jaTem,meu);render();}
 function compartilhar(id){const ev=evento(id);const t=textoWhats(ev);
   if(navigator.share)navigator.share({text:t}).catch(()=>{});
   else{navigator.clipboard.writeText(t).then(()=>toast('Escala copiada'),()=>alert(t));}}
@@ -1469,7 +1558,7 @@ const val=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
 
 /* --- escolher pessoa para uma posicao --- */
 function escolher(evId,tid,fid,idx){
-  if(!exige('escalas'))return;
+  if(!exigeEquipe('escalas',tid))return;
   const ev=evento(evId),f=funcao(tid,fid),atual=escalaDe(ev,tid,fid,idx);
   const usados=DB.escalas.filter(a=>a.eventoId===ev.id&&a!==atual).map(a=>a.pessoaId);
   const ciclo=cicloDe(ev.data);
@@ -1510,6 +1599,7 @@ function escolher(evId,tid,fid,idx){
   openSheet('Escalar',h,null);
 }
 function definirUI(evId,tid,fid,idx,pid){
+  if(!exigeEquipe('escalas',tid))return;
   const ev=evento(evId);
   if(pid&&ausente(pid,ev.data)&&!confirm(pessoa(pid).nome+' está indisponível ('+motivoAusencia(pid,ev.data)+'). Escalar mesmo assim?'))return;
   definir(ev,tid,fid,idx,pid||null);closeSheet();render();
@@ -1657,7 +1747,7 @@ function eventosRecorrentes(){
 /* ============ ABA: EQUIPES ============ */
 function vEquipes(){
   let h=hero('Equipes','Ministérios, funções e horários de chegada',
-    euPosso('equipes')?'<button class="add" aria-label="Nova equipe" onclick="novaEquipe()">+</button>':'',
+    euPosso('equipes')&&!meuEscopo()?'<button class="add" aria-label="Nova equipe" onclick="novaEquipe()">+</button>':'',
     DB.teams.length?numeros([[DB.teams.length,'equipes'],
       [DB.teams.reduce((n,t)=>n+t.funcoes.length,0),'funções'],
       [DB.pessoas.length,'pessoas']]):'');
@@ -1670,7 +1760,7 @@ function vEquipes(){
       +'<p class="sub" style="font-size:13px;margin-top:8px;padding:0">Cria Louvor, Mídia e Recepção já com '
       +'as funções mais usadas. Sem nenhuma pessoa &mdash; você renomeia e ajusta o que quiser.</p></div>':'');
   else{h+='<div class="card">';
-    DB.teams.forEach(t=>{const q=DB.pessoas.filter(p=>p.teamIds.includes(t.id)).length;
+    DB.teams.filter(t=>noMeuEscopo(t.id)).forEach(t=>{const q=DB.pessoas.filter(p=>p.teamIds.includes(t.id)).length;
       const vagasT=t.funcoes.reduce((n,f)=>n+(f.qtd||1),0);
       h+='<div class="row" onclick="go(\'equipe\',\''+t.id+'\')" style="border-left:4px solid '+t.cor+'">'
        +'<div class="avatar" style="background:'+t.cor+'22;color:'+t.cor+'">'+esc(ini(t.nome))+'</div>'
@@ -1710,7 +1800,7 @@ function vEquipe(id){
     +'<span class="chev">&#8250;</span></div>';});
   h+='</div><div class="gap"></div><div class="pad">'
    +'<button class="btn2" onclick="editarEquipe(\''+t.id+'\')">Editar equipe</button><div class="gap"></div>'
-   +'<button class="btn2 btn-d" onclick="apagarEquipe(\''+t.id+'\')">Excluir equipe</button></div>';
+   +(meuEscopo()?'':'<button class="btn2 btn-d" onclick="apagarEquipe(\''+t.id+'\')">Excluir equipe</button>')+'</div>';
   return h;
 }
 /* Cores de sistema da Apple, na variante acessivel: a cor da equipe tambem
@@ -1727,14 +1817,14 @@ function formEquipe(t){
     '<button class="chip'+((t?t.cor===c:i===0)?' on':'')+'" data-id="'+c+'" style="background:'+c+';border-color:'+c
     +';width:38px;height:38px;padding:0;border-radius:50%" onclick="[...this.parentNode.children].forEach(x=>x.classList.remove(\'on\'));this.classList.add(\'on\')"></button>').join('')+'</div>';
 }
-function novaEquipe(){if(!exige('equipes'))return;openSheet('Nova equipe',formEquipe(null),()=>{
+function novaEquipe(){if(!exigeGeral('equipes'))return;openSheet('Nova equipe',formEquipe(null),()=>{
   const n=val('eNome'); if(!n){toast('Digite um nome');return false;}
   DB.teams.push({id:uid(),nome:n,cor:chipsSel('eCor')[0]||CORES[0],
     antecedencia:Math.max(0,+val('eAnt')||0),funcoes:[]});save();});}
-function editarEquipe(id){if(!exige('equipes'))return;const t=team(id);openSheet('Editar equipe',formEquipe(t),()=>{
+function editarEquipe(id){if(!exigeEquipe('equipes',id))return;const t=team(id);openSheet('Editar equipe',formEquipe(t),()=>{
   t.nome=val('eNome')||t.nome;t.cor=chipsSel('eCor')[0]||t.cor;
   t.antecedencia=Math.max(0,+val('eAnt')||0);save();});}
-function apagarEquipe(id){if(!exige('equipes'))return;if(!confirm('Excluir a equipe e remover das escalas?'))return;
+function apagarEquipe(id){if(!exigeGeral('equipes'))return;if(!confirm('Excluir a equipe e remover das escalas?'))return;
   const t=team(id);const fids=t.funcoes.map(f=>f.id);
   DB.teams=DB.teams.filter(x=>x.id!==id);
   DB.escalas=DB.escalas.filter(a=>a.teamId!==id);
@@ -1745,14 +1835,14 @@ function formFuncao(f){
   return '<label>Nome da função</label><input id="fNome" value="'+esc(f?f.nome:'')+'" placeholder="Vocal">'
   +'<label>Quantas pessoas por culto</label><input id="fQtd" type="number" min="1" max="20" value="'+(f?f.qtd||1:1)+'">';
 }
-function novaFuncao(tid){if(!exige('equipes'))return;const t=team(tid);openSheet('Nova função',formFuncao(null),()=>{
+function novaFuncao(tid){if(!exigeEquipe('equipes',tid))return;const t=team(tid);openSheet('Nova função',formFuncao(null),()=>{
   const n=val('fNome'); if(!n){toast('Digite um nome');return false;}
   t.funcoes.push({id:uid(),nome:n,qtd:Math.max(1,+val('fQtd')||1)});save();});}
-function editarFuncao(tid,fid){if(!exige('equipes'))return;const t=team(tid),f=funcao(tid,fid);
+function editarFuncao(tid,fid){if(!exigeEquipe('equipes',tid))return;const t=team(tid),f=funcao(tid,fid);
   openSheet('Editar função',formFuncao(f)+'<div class="gap"></div>'
     +'<button class="btn2 btn-d" onclick="apagarFuncao(\''+tid+'\',\''+fid+'\')">Excluir função</button>',()=>{
     f.nome=val('fNome')||f.nome;f.qtd=Math.max(1,+val('fQtd')||1);save();});}
-function apagarFuncao(tid,fid){if(!exige('equipes'))return;if(!confirm('Excluir esta função?'))return;
+function apagarFuncao(tid,fid){if(!exigeEquipe('equipes',tid))return;if(!confirm('Excluir esta função?'))return;
   const t=team(tid);t.funcoes=t.funcoes.filter(f=>f.id!==fid);
   DB.escalas=DB.escalas.filter(a=>a.funcaoId!==fid);
   DB.pessoas.forEach(p=>p.funcaoIds=p.funcaoIds.filter(x=>x!==fid));
@@ -1760,14 +1850,16 @@ function apagarFuncao(tid,fid){if(!exige('equipes'))return;if(!confirm('Excluir 
 
 /* ============ ABA: PESSOAS ============ */
 function vPessoas(){
-  const entraram=DB.pessoas.filter(x=>x.entrou).length;
-  const comPush=recebendoPush();
-  let h=hero('Pessoas','Ordenados por quem serviu menos neste mês',
+  const base=pessoasNoEscopo(), meu=meuEscopo();
+  const entraram=base.filter(x=>x.entrou).length;
+  const comPush=meu?base.filter(x=>recebePush(x.id)).length:recebendoPush();
+  let h=hero('Pessoas',meu?'Voluntários de '+esc(nomesEscopo(meu))+', por quem serviu menos no mês'
+      :'Ordenados por quem serviu menos neste mês',
     euPosso('pessoas')?'<button class="add" aria-label="Nova pessoa" onclick="novaPessoa()">+</button>':'',
-    DB.pessoas.length?numeros([[DB.pessoas.length,'voluntários'],[entraram,'já entraram'],
+    base.length?numeros([[base.length,'voluntários'],[entraram,'já entraram'],
       [comPush,'com aviso']]):'');
   h+=blocoAvisos([bannerConexao(),bannerNuvem()]);
-  if(!DB.pessoas.length)return h+'<div class="empty"><b>Nenhum voluntário</b>'
+  if(!base.length)return h+'<div class="empty"><b>Nenhum voluntário</b>'
     +'Toque no + para cadastrar. Basta nome e telefone.</div>';
   h+=campoBusca('pessoas','Procurar voluntário');
   /* calculado uma vez, fora do laco: dentro dele isto varria a lista inteira
@@ -1778,9 +1870,9 @@ function vPessoas(){
      maior numero da lista: com todo mundo servindo 2x, a lista inteira ficava
      vermelha — e cor que acende sempre deixa de ser aviso. O corte agora e a
      media do mes mais uma escala. */
-  const soma=DB.pessoas.reduce((n,x)=>n+(mc.mes[x.id]||0),0);
-  const corte=Math.max(2,Math.ceil(soma/Math.max(1,DB.pessoas.length))+1);
-  const ord=[...DB.pessoas].sort((a,b)=>mc.mes[a.id]-mc.mes[b.id]
+  const soma=base.reduce((n,x)=>n+(mc.mes[x.id]||0),0);
+  const corte=Math.max(2,Math.ceil(soma/Math.max(1,base.length))+1);
+  const ord=[...base].sort((a,b)=>mc.mes[a.id]-mc.mes[b.id]
     ||mc.janela[a.id]-mc.janela[b.id]||a.nome.localeCompare(b.nome))
     .filter(x=>casa(x.nome,BUSCA.pessoas));
   if(!ord.length)return h+'<div class="empty">Ninguém com esse nome.</div>';
@@ -1841,7 +1933,9 @@ function vPessoa(id){
   h+='<div class="sec-t">Permissões</div><div class="card">'
    +'<div class="row" '+(ehAdmin(souEu())?'onclick="editarPerms(\''+p.id+'\')"':'style="cursor:default"')+'>'
    +'<div class="grow"><div class="t">'+(perms.length?esc(perms.map(k=>PERMS[k]).join(', ')):'Voluntário')+'</div>'
-   +'<div class="s">'+(perms.length?'vê o painel de líder':'vê apenas a própria escala')+'</div></div>'
+   +'<div class="s">'+(perms.length
+      ?(escopoDe(p)?'só em '+esc(nomesEscopo(escopoDe(p))):'vale para a igreja inteira')
+      :'vê apenas a própria escala')+'</div></div>'
    +(ehAdmin(souEu())?'<span class="chev">&#8250;</span>':'')+'</div></div>';
   const per=DB.ausencias.filter(a=>a.pessoaId===p.id&&a.fim>=hojeIso()).sort((a,b)=>a.inicio.localeCompare(b.inicio));
   h+='<div class="sec-t">Períodos bloqueados <span style="float:right;text-transform:none;letter-spacing:0">'
@@ -1855,6 +1949,7 @@ function vPessoa(id){
   h+='</div>';
   h+='<div class="sec-t">Dias avulsos</div>';
   h+='<div class="pad">'+calendario(p.id)+'</div>';
+  if(euPossoPessoa('pessoas',p))
   h+='<div class="gap"></div><div class="pad"><button class="btn2" onclick="editarPessoa(\''+p.id+'\')">Editar cadastro</button>'
    +'<div class="gap"></div><button class="btn2 btn-d" onclick="apagarPessoa(\''+p.id+'\')">Excluir voluntário</button></div>';
   return h;
@@ -1935,7 +2030,7 @@ function toggleInd(pid,data){
 function formPessoa(p){
   let h='<label>Nome</label><input id="pNome" value="'+esc(p?p.nome:'')+'" placeholder="Maria Silva">'
    +'<label>Telefone (opcional)</label><input id="pTel" value="'+esc(p?p.telefone:'')+'" placeholder="(11) 90000-0000">';
-  DB.teams.forEach(t=>{
+  DB.teams.filter(t=>noMeuEscopo(t.id)).forEach(t=>{
     h+='<label style="margin-top:14px">'+esc(t.nome)+'</label><div class="chips" data-team="'+t.id+'">'
      +t.funcoes.map(f=>'<button class="chip'+((p&&p.funcaoIds.includes(f.id))?' on':'')+'" data-id="'+f.id
       +'" onclick="this.classList.toggle(\'on\')">'+esc(f.nome)+'</button>').join('')
@@ -1954,6 +2049,9 @@ function lerFuncoes(){
 function novaPessoa(){if(!exige('pessoas'))return;openSheet('Novo voluntário',formPessoa(null),()=>{
   const n=val('pNome'); if(!n){toast('Digite um nome');return false;}
   const{fids,tids}=lerFuncoes();
+  /* sem funcao, a pessoa nao entraria em equipe nenhuma e sairia da vista
+     de quem a cadastrou */
+  if(meuEscopo()&&!fids.length){toast('Marque ao menos uma função da sua equipe');return false;}
   const p={id:uid(),nome:n,telefone:val('pTel'),email:'',nascimento:'',
     codigo:novoCodigo(),lider:false,teamIds:tids,funcaoIds:fids};
   DB.pessoas.push(p);save();
@@ -1964,9 +2062,19 @@ function novaPessoa(){if(!exige('pessoas'))return;openSheet('Novo voluntário',f
     +'<div style="font-size:38px;font-weight:800;letter-spacing:6px;font-family:ui-monospace,monospace">'+esc(p.codigo)+'</div></div>'
     +'<button onclick="convidar(\''+p.id+'\')">Enviar convite pelo WhatsApp</button>',null),260);
   });}
-function editarPessoa(id){if(!exige('pessoas'))return;const p=pessoa(id);openSheet('Editar voluntário',formPessoa(p),()=>{
+function editarPessoa(id){const p=pessoa(id);if(!exigePessoa('pessoas',p))return;
+  openSheet('Editar voluntário',formPessoa(p),()=>{
   p.nome=val('pNome')||p.nome;p.telefone=val('pTel');
-  const{fids,tids}=lerFuncoes();p.teamIds=tids;p.funcaoIds=fids;save();});}
+  const{fids,tids}=lerFuncoes();
+  /* O formulario so mostra as equipes de quem edita. As funcoes que a pessoa
+     tem em outras equipes nao aparecem nele — e por isso nao podem sumir ao
+     salvar: quem e de Louvor e de Projecao continua no Louvor depois que o
+     lider de Projecao edita o cadastro. */
+  const equipeDa=fid=>DB.teams.find(t=>t.funcoes.some(f=>f.id===fid));
+  const fora=p.funcaoIds.filter(fid=>{const t=equipeDa(fid);return t&&!noMeuEscopo(t.id);});
+  p.funcaoIds=[...new Set(fora.concat(fids))];
+  p.teamIds=[...new Set(fora.map(fid=>equipeDa(fid).id).concat(tids))];
+  save();});}
 
 /* ---- permissoes por pessoa (so admin) ---- */
 function editarPerms(id){
@@ -1981,10 +2089,24 @@ function editarPerms(id){
      +'<span class="pill '+(p.perms[k]?'ok':'mut')+'">'+(p.perms[k]?'liberado':'não')+'</span></div>';});
   h+='</div><p style="font-size:13px;color:var(--muted);margin-top:12px">'
    +'Quem tiver qualquer permissão passa a ver o painel de líder, só com as abas que pode usar.</p>';
+  const atuais=(p.perms&&Array.isArray(p.perms.escopo)&&p.perms.escopo)||[];
+  if(DB.teams.length)
+    h+='<div class="sec-t" style="margin:20px 0 8px">Vale para quais equipes</div>'
+     +'<div class="chips" id="permEquipes">'
+     +DB.teams.map(t=>'<button class="chip'+(atuais.indexOf(t.id)>=0?' on':'')+'" data-id="'+t.id+'" '
+       +'onclick="this.classList.toggle(\'on\')">'+esc(t.nome)+'</button>').join('')+'</div>'
+     +'<p style="font-size:13px;color:var(--muted);margin:2px 0 0">'
+     +'<b>Nenhuma marcada:</b> vale para a igreja inteira.<br>'
+     +'<b>Uma ou mais:</b> a pessoa monta a escala, cadastra voluntários, ajusta funções e acompanha '
+     +'trocas <b>só dessas equipes</b>, e continua vendo o culto inteiro. '
+     +'Criar cultos, se liberado, vale para o calendário todo.</p>';
   openSheet('Permissões',h,()=>{
     const novo={};
     document.querySelectorAll('#sheetBody .row[data-k]').forEach(r=>{
       if(r.querySelector('.pill').classList.contains('ok'))novo[r.dataset.k]=true;});
+    const eqs=document.getElementById('permEquipes')?chipsSel('permEquipes'):[];
+    /* administrador nao tem escopo: e ele quem distribui os escopos */
+    if(eqs.length&&!novo.admin&&Object.keys(novo).length)novo.escopo=eqs;
     if(p.perms.admin&&!novo.admin&&DB.pessoas.filter(x=>x.perms&&x.perms.admin).length<2){
       toast('Precisa haver ao menos um administrador');return false;}
     if(p.id===DB.sessao&&!novo.admin&&p.perms.admin){toast('Você não pode remover o próprio admin');return false;}
@@ -1997,7 +2119,7 @@ function togglePerm(row){
   s.classList.toggle('ok',!on); s.classList.toggle('mut',on);
   s.textContent=on?'não':'liberado';
 }
-function apagarPessoa(id){if(!exige('pessoas'))return;if(!confirm('Excluir este voluntário das escalas?'))return;
+function apagarPessoa(id){if(!exigePessoa('pessoas',pessoa(id)))return;if(!confirm('Excluir este voluntário das escalas?'))return;
   DB.pessoas=DB.pessoas.filter(p=>p.id!==id);DB.escalas=DB.escalas.filter(a=>a.pessoaId!==id);
   DB.indisp=DB.indisp.filter(i=>i.pessoaId!==id);
   if(DB.meuId===id)DB.meuId=null;
@@ -2121,7 +2243,8 @@ function verPermissoes(){
   com.forEach(p=>{const ks=Object.keys(PERMS).filter(k=>p.perms[k]);
     h+='<div class="row" onclick="editarPerms(\''+p.id+'\')"><div class="avatar">'+esc(ini(p.nome))+'</div>'
      +'<div class="grow"><div class="t">'+esc(p.nome)+'</div>'
-     +'<div class="s">'+esc(ks.map(k=>PERMS[k]).join(', '))+'</div></div><span class="chev">&#8250;</span></div>';});
+     +'<div class="s">'+(escopoDe(p)?'<b>'+esc(nomesEscopo(escopoDe(p)))+'</b> &middot; ':'')
+     +esc(ks.map(k=>PERMS[k]).join(', '))+'</div></div><span class="chev">&#8250;</span></div>';});
   h+='</div><div class="gap"></div><div class="sec-t" style="margin-left:0">Voluntários</div><div class="card" style="margin:0">';
   DB.pessoas.filter(p=>!temPainel(p)).forEach(p=>{
     h+='<div class="row" onclick="editarPerms(\''+p.id+'\')"><div class="avatar">'+esc(ini(p.nome))+'</div>'
@@ -2218,7 +2341,7 @@ const recebePush=pid=>naNuvem()
 function cobrarEvento(evId){
   if(!exige('escalas'))return;
   const ev=evento(evId); if(!ev)return toast('Evento não encontrado');
-  const lista=DB.escalas.filter(a=>a.eventoId===evId);
+  const lista=DB.escalas.filter(a=>a.eventoId===evId&&noMeuEscopo(a.teamId));
   if(!lista.length)return toast('Ninguém escalado neste culto ainda');
   const pend=lista.filter(a=>a.status!=='confirmado');
   const mudos=lista.filter(a=>!recebePush(a.pessoaId)).length;
@@ -2277,8 +2400,17 @@ function enviarCobranca(evId,quem){
   toast(lista.length+' aviso(s) na fila');
 }
 
-function avisarLideres(texto,tipo,ref,exceto){
+/* Lider de equipe so recebe o que e da equipe dele: a troca do Louvor nao
+   chega para o lider de Palco. A equipe sai do proprio ref (troca ou
+   escala); sem como descobrir, avisa todos, que e o comportamento antigo. */
+function avisarLideres(texto,tipo,ref,exceto,equipes){
+  if(!equipes&&ref){
+    const t=DB.trocas.find(x=>x.id===ref);
+    const a=t?escalaPorId(t.escalaId):escalaPorId(ref);
+    equipes=a?[a.teamId]:null;
+  }
   DB.pessoas.filter(p=>(pode(p,'trocas')||pode(p,'escalas'))&&p.id!==exceto)
+    .filter(p=>{const e=escopoDe(p);return !e||!equipes||equipes.some(x=>e.indexOf(x)>=0);})
     .forEach(p=>avisar(p.id,texto,tipo,ref));
 }
 /* ---- BURACOS NA ESCALA -------------------------------------------------
@@ -2603,7 +2735,7 @@ function criarAusencia(pid,inicio,fim,motivo){
     return a.pessoaId===pid&&e&&e.data>=inicio&&e.data<=fim;});
   avisarLideres(p.nome+' bloqueou '+fmt(inicio)+' a '+fmt(fim)+' ('+motivo.trim()+')'
     +(conflitos.length?' e já está escalado em '+conflitos.length+' culto(s) no período.':'.'),
-    conflitos.length?'alerta':'info',null,pid);
+    conflitos.length?'alerta':'info',null,pid,(p.teamIds&&p.teamIds.length)?p.teamIds:null);
   save();
   if(conflitos.length)toast('Bloqueado. Atenção: '+conflitos.length+' escala(s) no período.');
   else toast('Período bloqueado');
@@ -4837,7 +4969,7 @@ function vTrocas(){
   }
 
   if(painel&&pode(me,'trocas')){
-    const todas=trocasAbertas();
+    const todas=trocasAbertas().filter(trocaNoEscopo);
     h+='<div class="sec-t">Todos os pedidos em aberto (líder)</div><div class="card">';
     if(!todas.length)h+='<div class="empty">Nenhuma troca pendente na equipe.</div>';
     todas.forEach(t=>{const a=escalaPorId(t.escalaId),ev=evento(a.eventoId),f=funcao(a.teamId,a.funcaoId);
