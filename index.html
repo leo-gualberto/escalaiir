@@ -364,6 +364,106 @@ nav .bdg{top:1px;margin-left:7px}
 .instalar .s{font-size:12.5px;opacity:.8;line-height:1.3}
 .instalar .fechar{width:28px;height:28px;padding:0;flex:none;background:transparent;
   color:var(--brand-ink);opacity:.55;font-size:20px;line-height:0}
+
+/* ================= LAYOUT "A GRADE" (nov/2026) =================
+   O logo e uma grade de vagas, uma delas preenchida. O app passa a falar a
+   mesma lingua: cada culto mostra as proprias vagas como quadradinhos —
+   cheio e confirmado, meio-tom e escalado, vazado e vago. E a unica ousadia
+   do layout; o resto fica quieto: titulo grande sobre o fundo, como nos
+   apps do sistema, e listas agrupadas. */
+:root{--line-forte:#C7C7CC}
+@media (prefers-color-scheme:dark){:root{--line-forte:#48484A}}
+body .hero{background:transparent;color:var(--ink);border-radius:0;box-shadow:none;
+  padding:calc(var(--safe-t) + 14px) 20px 6px}
+body .hero h1{color:var(--ink);font-size:34px;font-weight:700;letter-spacing:-.022em;margin:16px 0 2px;line-height:1.1}
+body .hero p{color:var(--muted);opacity:1;font-size:15px;line-height:1.4}
+.hero-top{gap:10px}
+.hero-logo{flex:none;line-height:0}
+.hero-logo svg{border-radius:7px}
+.hero-quem{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.hero-quem b{font-size:14px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero-quem span{font-size:12px;color:var(--muted)}
+body .hero .add{background:var(--brand);color:#fff;width:36px;height:36px;font-size:22px}
+body .hero .add:active{background:var(--brand);opacity:.75}
+body .conx{background:var(--card);color:var(--muted);border:1px solid var(--line);letter-spacing:.2px;font-weight:700}
+body .conx.on i{background:var(--ok)}
+body .conx.off{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+body .conx.off i{background:var(--warn)}
+body .conx.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+body .conx.bad i{background:var(--bad)}
+body .conx.sync i{background:var(--brand)}
+.resumo{display:flex;flex-wrap:wrap;gap:2px 16px;margin:10px 0 0;font-size:15px;color:var(--muted)}
+.resumo b{color:var(--ink);font-weight:650;font-variant-numeric:tabular-nums}
+/* titulos de secao em frase normal, nao em rotulo de caixa alta */
+body .sec-t{text-transform:none;letter-spacing:-.012em;font-size:20px;font-weight:700;color:var(--ink);
+  margin:26px 20px 10px}
+/* data do culto: o dia grande e o dia da semana; o mes ja esta no titulo da secao */
+body .dchip{background:transparent;width:42px;padding:0}
+body .dchip b{font-size:23px;font-weight:700;color:var(--ink);letter-spacing:-.02em}
+body .dchip span{text-transform:lowercase;letter-spacing:0;opacity:1;color:var(--muted);font-size:12.5px;font-weight:600}
+body .dchip.hoje{background:transparent}
+body .dchip.hoje b,body .dchip.hoje span{color:var(--brand)}
+.vg{font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.vg.warn{color:var(--warn)}.vg.ok{color:var(--ok)}
+/* as vagas */
+.faixa{display:flex;flex-wrap:wrap;gap:3px;margin-top:8px;max-width:260px}
+.faixa i{display:block;width:9px;height:9px;border-radius:2.5px}
+.faixa i.cf{background:var(--brand)}
+.faixa i.es{background:var(--brand);opacity:.32}
+.faixa i.vz{box-shadow:inset 0 0 0 1.5px var(--line-forte)}
+.faixa.g{gap:5px;margin-top:14px;max-width:none}
+.faixa.g i{width:15px;height:15px;border-radius:4px}
+.faixa.barra{display:block;height:8px;border-radius:3px;background:var(--line);position:relative;overflow:hidden}
+.faixa.barra i{position:absolute;top:0;bottom:0;width:auto;height:auto;border-radius:0}
+.faixa.barra.g{height:14px;border-radius:4px}
+.leg-faixa{display:flex;gap:14px;margin-top:10px;font-size:12.5px;color:var(--muted)}
+.leg-faixa span{display:flex;align-items:center;gap:6px}
+.leg-faixa i{display:block;width:10px;height:10px;border-radius:3px}
+.leg-faixa i.cf{background:var(--brand)}.leg-faixa i.es{background:var(--brand);opacity:.32}
+.leg-faixa i.vz{box-shadow:inset 0 0 0 1.5px var(--line-forte)}
+/* menu lateral do computador ganha a marca */
+.nav-marca{display:none}
+.vagas-linha{display:flex;align-items:center;gap:10px;margin-top:8px}
+.vagas-linha .faixa{margin-top:0;flex-wrap:nowrap}
+.vagas-linha .faixa.barra{flex:1;max-width:180px}
+.slot .grow{flex:1;min-width:0}
+@media (min-width:1000px){
+  .nav-marca{display:flex;align-items:center;gap:10px;padding:0 13px 22px;font-size:17px;letter-spacing:-.01em}
+  .nav-marca svg{border-radius:7px}
+  body .hero{padding-top:6px}
+}
+
+/* ---- segunda passada ---- */
+/* rotulos de funcao em letra normal: o caixa-alta saiu dos titulos e sai daqui tambem */
+body .fn,body .slot .fn,body .hbox .fn{text-transform:none;letter-spacing:0;font-weight:500}
+body .slot .fn{font-size:13px}
+body .hbox .fn{font-size:12px}
+/* a cor da equipe fica no quadradinho do titulo e nos avatares; sai a borda */
+body .mcard{border-left:0}
+.teamhead .pill.mut{background:transparent;color:var(--muted);padding:0;font-weight:500}
+/* WhatsApp: so o icone, sem moldura */
+body .slot button[aria-label^="Chamar"]{border:0;background:transparent;color:var(--brand);padding:8px!important}
+body .hero p b{color:var(--ink);font-weight:650}
+.resumo{gap:2px 12px}
+/* pessoas: equipes em quadradinhos de cor e a carga do mes em vagas */
+.eqdot{display:inline-block;width:8px;height:8px;border-radius:2.5px;margin-right:3px;vertical-align:0}
+.faixa.carga{margin-top:0;flex-wrap:nowrap;max-width:none;flex:none}
+.faixa i.alto{background:var(--bad)}
+/* folhas: titulos de secao menores, como pede um painel que sobe de baixo */
+.sheet .sec-t{font-size:15px;font-weight:650}
+/* agenda: o dia escalado e a vaga preenchida do logo; o dia de folga e vazado */
+body .cal .d.esc{background:var(--brand);border-color:var(--brand);color:#fff}
+body .cal .d.no{background:transparent;border-color:transparent;box-shadow:inset 0 0 0 2px var(--line-forte);
+  color:var(--muted);text-decoration:line-through}
+body .cal .d.aus{background:repeating-linear-gradient(45deg,var(--line-forte),var(--line-forte) 3px,transparent 3px,transparent 7px);
+  border-color:var(--line-forte);color:var(--ink)}
+body .cal .d.esc.no{background:var(--brand);color:#fff;text-decoration:none;box-shadow:inset 0 0 0 3px var(--bad)}
+/* no escuro o meio-tom precisava de mais presenca para nao sumir no vazado */
+@media (prefers-color-scheme:dark){
+  :root{--line-forte:#636366}
+  .faixa i.es,.leg-faixa i.es{opacity:.5}
+  .faixa.barra i.es{opacity:.5!important}
+}
 </style>
 </head>
 <body>
@@ -945,7 +1045,7 @@ ICONS.minha='<rect x="4" y="5" width="16" height="16" rx="2.5"/>'
  +'<path d="M8.5 11h7M8.5 15h4.5"/>';
 ICONS.conta=ICONS.perfil;
 function navHtml(itens,ativo,badges){
-  return itens.map(k=>'<button class="'+(ativo===k?'on':'')+'"'
+  return '<div class="nav-marca">'+logoApp(30)+'<b>Escala</b></div>'+itens.map(k=>'<button class="'+(ativo===k?'on':'')+'"'
     +(ativo===k?' aria-current="page"':'')+' onclick="tab(\''+k+'\')">'
     +((badges&&badges[k])
       ?'<span class="bdg" aria-label="'+badges[k]+' em aberto">'
@@ -1213,8 +1313,8 @@ function hero(titulo,sub,btn,extra){
     :(escopo?'Líder · '+nomesEscopo(escopo):'Painel do líder')):'Voluntário';
   const org=(DB.config&&DB.config.igreja)||'';
   return '<div class="hero"><div class="hero-top">'
-   +'<span class="hero-badge">'+selo+'</span>'
-   +(org?'<span class="hero-org">'+esc(org)+'</span>':'')
+   +'<span class="hero-logo">'+logoApp(32)+'</span>'
+   +'<span class="hero-quem"><b>'+esc(org||'Escala da Equipe')+'</b><span>'+selo+'</span></span>'
    +'<span class="hero-sp"></span>'+seloConexao()+(btn||'')+'</div>'
    +'<h1>'+esc(titulo)+'</h1>'
    +(sub?'<p>'+sub+'</p>':'')
@@ -1224,7 +1324,23 @@ const topo=(titulo,btn)=>hero(titulo,'',btn);
 const voltarBar=t=>'<div class="volta"><button onclick="voltar()">&#8249; Voltar</button></div>'
   +'<h1 style="margin-top:6px">'+esc(t)+'</h1>';
 /* numeros do topo: <div><b>3</b><span>rotulo</span></div> */
-const numeros=arr=>'<div class="hero-num">'+arr.map(x=>'<div><b>'+x[0]+'</b><span>'+x[1]+'</span></div>').join('')+'</div>';
+/* os numeros do topo viram uma linha de texto: sao contexto, nao manchete */
+const numeros=arr=>'<p class="resumo">'+arr.map(x=>'<span><b>'+x[0]+'</b> '+x[1]+'</span>').join('')+'</p>';
+/* As vagas de um culto em quadradinhos, a mesma grade do logo. Acima de
+   uma linha e meia de quadrados vira barra, para nao virar textura. */
+function faixaVagas(s,grande){
+  if(!s||!s.total)return '';
+  const n=s.total, rot=s.preenchidos+' de '+n+' vagas preenchidas, '+s.confirmados+' confirmadas';
+  if(n>(grande?36:24)){
+    const pc=x=>Math.round(x/n*100);
+    return '<div class="faixa barra'+(grande?' g':'')+'" role="img" aria-label="'+rot+'">'
+     +'<i class="es" style="left:0;width:'+pc(s.preenchidos)+'%;background:var(--brand);opacity:.32"></i>'
+     +'<i class="cf" style="left:0;width:'+pc(s.confirmados)+'%"></i></div>';
+  }
+  let o='';
+  for(let k=0;k<n;k++)o+='<i class="'+(k<s.confirmados?'cf':k<s.preenchidos?'es':'vz')+'"></i>';
+  return '<div class="faixa'+(grande?' g':'')+'" role="img" aria-label="'+rot+'">'+o+'</div>';
+}
 
 /* ============ ABA: ESCALAS ============ */
 function vEscalas(){
@@ -1234,7 +1350,7 @@ function vEscalas(){
   const tr=trocasAbertas().filter(trocaNoEscopo);
   let h=hero('Escalas','Cultos e eventos da sua igreja',
     euPosso('eventos')?'<button class="add" aria-label="Novo culto" onclick="novoEvento()">+</button>':'',
-    f.length?numeros([[f.length,'próximos cultos'],[vagas,'vagas abertas'],[conf,'confirmados']]):'');
+    f.length?numeros([[f.length,f.length===1?'culto':'cultos'],[vagas,'vagas abertas'],[conf,'confirmados']]):'');
   /* todos os avisos juntos, para o bloco se recolher quando forem varios */
   const avisos=[bannerConexao(),bannerNuvem(),bannerInstalar()];
   if(tr.length&&euPosso('trocas'))avisos.push('<div class="infobox" onclick="tab(\'trocas\')">&#8644; '
@@ -1277,19 +1393,24 @@ function vEscalas(){
       if(mes!==mesAberto){
         if(mesAberto!==null)h+='</div>';
         const ano=mes.slice(0,4);
-        h+='<div class="sec-t">'+MESL[+mes.slice(5,7)-1]+(ano===anoAtual?'':' de '+ano)+'</div>'
+        const nm=MESL[+mes.slice(5,7)-1];
+        h+='<div class="sec-t">'+nm[0].toUpperCase()+nm.slice(1)+(ano===anoAtual?'':' de '+ano)+'</div>'
          +'<div class="card">';
         mesAberto=mes;
       }
       const cor=!s.total?'mut':s.preenchidos<s.total?'warn':(s.confirmados===s.total?'ok':'mut');
-      const txt=!s.total?'sem sua equipe':s.preenchidos<s.total?(s.total-s.preenchidos)+' vaga(s)'
-        :s.confirmados+'/'+s.total+' confirmados';
+      const txt=!s.total?'sem sua equipe':s.preenchidos<s.total
+        ?(s.total-s.preenchidos===1?'falta 1':'faltam '+(s.total-s.preenchidos))
+        :(s.confirmados===s.total?'todos confirmados':s.confirmados+' de '+s.total+' confirmados');
       h+='<div class="row" onclick="go(\'evento\',\''+ev.id+'\')">'
-        +'<div class="dchip'+(ev.data===hojeIso()?' hoje':'')+'"><b>'+d.getDate()+'</b><span>'+MES[d.getMonth()]+'</span></div>'
+        +'<div class="dchip'+(ev.data===hojeIso()?' hoje':'')+'"><b>'+d.getDate()+'</b><span>'+DOW[d.getDay()]+'</span></div>'
         +'<div class="grow"><div class="t">'+esc(ev.titulo)+'</div>'
-        +'<div class="s">'+DOW[d.getDay()]+' &middot; culto às '+esc(ev.hora)
-        +(temInfo(ev)?' &middot; '+ico('info',13)+' info':'')+'</div></div>'
-        +'<span class="pill '+cor+'">'+txt+'</span><span class="chev">&#8250;</span></div>';});
+        /* a contagem entra na linha do horario: a faixa de vagas fica com a
+           largura toda e o titulo nao quebra */
+        +'<div class="s">'+esc(ev.hora)+' &middot; <span class="vg '+cor+'">'+txt+'</span>'
+        +(temInfo(ev)?' &middot; '+ico('info',13)+' recado':'')+'</div>'
+        +faixaVagas(s)+'</div>'
+        +'<span class="chev">&#8250;</span></div>';});
     if(mesAberto!==null)h+='</div>';}
   const p=passados().slice(0,5);
   if(p.length){h+='<div class="sec-t">Anteriores</div><div class="card">';
@@ -1318,9 +1439,9 @@ function vEvento(id){
     +'<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700">'
     +'<span>'+s.preenchidos+' de '+s.total+' posições</span>'
     +'<span style="color:var(--ok)">'+s.confirmados+' confirmados</span></div>'
-    +'<div class="bar bar2" style="height:9px">'
-    +'<i class="ocupado'+(falta?' falta':'')+'" style="width:'+pct(s.preenchidos)+'%"></i>'
-    +'<i class="conf" style="width:'+pct(s.confirmados)+'%"></i></div>'
+    +faixaVagas(s,true)
+    +'<div class="leg-faixa"><span><i class="cf"></i>confirmado</span><span><i class="es"></i>escalado</span>'
+    +'<span><i class="vz"></i>vago</span></div>'
     +(s.recusados?'<div style="color:var(--bad);font-size:13px;font-weight:600;margin-top:8px">'
       +s.recusados+' pessoa(s) precisam trocar esta data</div>':'')
     +'</div></div>';
@@ -1328,9 +1449,10 @@ function vEvento(id){
   /* quem serve neste culto tem um atalho para resolver a propria vaga aqui
      mesmo, sem ter de voltar e procurar na lista */
   const minhaAqui=DB.escalas.find(a=>a.eventoId===ev.id&&a.pessoaId===DB.sessao);
+  let trocaHtml='';
   if(minhaAqui&&ev.data>=hojeIso()){
     const jaPediu=trocaDaEscala(minhaAqui.id);
-    h+='<div class="pad" style="margin-bottom:6px">'
+    trocaHtml='<div class="pad" style="margin-bottom:6px">'
      +(jaPediu
        ?'<button class="btn2 btn-sm" style="width:100%;color:var(--warn);border-color:var(--warn)" '
         +'onclick="tab(\'trocas\')">Você já pediu troca desta vaga &rsaquo;</button>'
@@ -1347,6 +1469,7 @@ function vEvento(id){
         ?'<button class="btn2 btn-sm" style="flex:none;width:auto;padding:9px 16px" '
          +'onclick="maisAcoesEvento(\''+ev.id+'\')">Mais&nbsp;&#8943;</button>':'')
       +'</div>';
+  h+=trocaHtml;
   const verContato=vejoContatos(ev);
   ev.teamIds.forEach(tid=>{const t=team(tid); if(!t)return;
     const ch=chegada(ev,tid);
@@ -1354,9 +1477,9 @@ function vEvento(id){
     const podeAqui=euPossoEquipe('escalas',tid);
     h+='<div class="teamhead"><span class="dot" style="background:'+t.cor+'"></span>'
      +'<h2>'+esc(t.nome)+'</h2>'
-     +'<span class="pill" style="background:'+t.cor+'22;color:'+t.cor+'">chegar '+esc(ch)
+     +'<span class="pill mut">chegar '+esc(ch)
      +' &middot; '+antecTexto(difMin(ev.hora,ch))+'</span></div>'
-     +'<div class="card" style="border-left:4px solid '+t.cor+'">';
+     +'<div class="card">';
     t.funcoes.forEach(f=>{for(let i=0;i<(f.qtd||1);i++){
       const a=escalaDe(ev,tid,f.id,i); const p=a?pessoa(a.pessoaId):null;
       /* "Aguardando" era o estado de quase toda vaga e aparecia quinze vezes
@@ -1891,7 +2014,7 @@ function vPessoas(){
     .filter(x=>casa(x.nome,BUSCA.pessoas));
   if(!ord.length)return h+'<div class="empty">Ninguém com esse nome.</div>';
   h+='<div class="card">';
-  ord.forEach(p=>{const ts=p.teamIds.map(t=>{const x=team(t);return x&&x.nome;}).filter(Boolean).join(', ');
+  ord.forEach(p=>{const eqs=p.teamIds.map(team).filter(Boolean);
     const nInd=DB.indisp.filter(i=>i.pessoaId===p.id&&i.data>=hojeIso()).length;
     const c=mc.mes[p.id]||0;
     const cor=c===0?'warn':(c>=corte?'bad':'mut');
@@ -1900,10 +2023,14 @@ function vPessoas(){
      +esc(ini(p.nome))+'</div>'
      +'<div class="grow"><div class="t">'+esc(p.nome)
      +(temPainel(p)?' <span class="pill" style="font-size:10px;padding:2px 7px">líder</span>':'')+'</div>'
-     +'<div class="s">'+esc(ts||'sem equipe')
-     +' &middot; '+(mc.total[p.id]||0)+' '+rotuloTotal()
+     +'<div class="s">'+eqs.map(x=>'<span class="eqdot" style="background:'+x.cor+'"></span>').join('')
+     +' '+esc(eqs.length===1?eqs[0].nome:eqs.length?eqs.length+' equipes':'sem equipe')
+     +' &middot; '+(c?c+(c>1?' escalas':' escala')+' no mês':'nenhuma escala no mês')
      +(nInd?' &middot; '+nInd+' dia(s) off':'')+'</div></div>'
-     +'<span class="pill '+cor+'">'+c+'x no mês</span><span class="chev">&#8250;</span></div>';});
+     /* a carga do mes em vagas, como no resto do app; vermelho so acima do corte */
+     +'<div class="faixa carga" role="img" aria-label="'+c+' escalas no mês">'
+     +(c?Array.from({length:Math.min(c,8)},()=>'<i class="'+(c>=corte?'alto':'cf')+'"></i>').join(''):'<i class="vz"></i>')
+     +'</div><span class="chev">&#8250;</span></div>';});
   return h+'</div>';
 }
 function vPessoa(id){
@@ -2000,13 +2127,13 @@ function calendario(pid){
       :'toggleInd(\''+pid+'\',\''+s+'\')';
     h+='<div class="'+cls+'" title="'+esc(aviso)+'" onclick="'+acao+'">'+d+'</div>';}
   h+='</div><div class="legenda">'
-   +'<span><i style="background:var(--ok);border-color:var(--ok)"></i>escalado</span>'
-   +'<span><i style="background:var(--bad);border-color:var(--bad)"></i>não pode (dia avulso)</span>'
-   +'<span><i style="background:repeating-linear-gradient(45deg,var(--warn),var(--warn) 3px,'
-   +'transparent 3px,transparent 6px);border-color:var(--warn)"></i>período bloqueado</span>'
+   +'<span><i style="background:var(--brand);border-color:var(--brand)"></i>escalado</span>'
+   +'<span><i style="background:transparent;border-color:transparent;box-shadow:inset 0 0 0 2px var(--line-forte)"></i>não pode (dia avulso)</span>'
+   +'<span><i style="background:repeating-linear-gradient(45deg,var(--line-forte),var(--line-forte) 3px,'
+   +'transparent 3px,transparent 7px);border-color:var(--line-forte)"></i>período bloqueado</span>'
    +'<span><i style="box-shadow:inset 0 -3px 0 var(--brand)"></i>há culto no dia</span></div>'
    +'<div style="font-size:12px;color:var(--muted);margin-top:8px">Toque num dia livre para marcar que '
-   +'<b>não</b> pode servir. Tocar num dia verde mostra a escala daquele dia.</div></div>';
+   +'<b>não</b> pode servir. Tocar num dia azul mostra a escala daquele dia.</div></div>';
   return h;
 }
 /* Escalado num dia que a propria pessoa marcou como indisponivel. Acontece
@@ -4788,14 +4915,16 @@ function vMinha(){
   const p=pessoa(DB.sessao); const lista=minhasEscalas(p.id);
   const pend=lista.filter(x=>x.a.status==='pendente').length;
   const confirmadas=lista.filter(x=>x.a.status==='confirmado').length;
-  let h=hero('Olá, '+esc(p.nome.split(' ')[0]),'Suas próximas escalas',
+  /* o topo responde a pergunta com que a pessoa abre o app: quando eu sirvo */
+  const prox=lista[0];
+  const sub=prox?'Próxima escala: <b>'+fmtLong(prox.e.data)+'</b>, chegue às <b>'
+      +esc(chegada(prox.e,prox.a.teamId))+'</b>':'Nenhuma escala marcada para você agora';
+  let h=hero('Olá, '+esc(p.nome.split(' ')[0]),sub,
     '<button class="add" style="position:relative" aria-label="Avisos" onclick="go(\'avisos\')">'
     +(naoLidos()?'<span class="bdg" style="top:-3px;left:auto;right:-3px;margin:0">'+naoLidos()+'</span>':'')
     +ico('sino',21)+'</button>',
-    lista.length?numeros([[lista.length,'convocações'],[confirmadas,'confirmadas'],
-      [pend,'a responder']]):'');
+    '');
   h+=blocoAvisos([bannerConexao(),bannerNuvem(),bannerInstalar()]);
-  if(pend)h+='<div class="warnbox">&#9888; '+pend+' convocação(ões) esperando a sua resposta.</div>';
   const paraMim=trocasParaMim();
   if(paraMim.length)h+='<div class="warnbox" style="background:var(--brand-soft);color:var(--brand);cursor:pointer" '
     +'onclick="tab(\'trocas\')">'+paraMim.length+' pedido(s) de troca esperando você &rsaquo;</div>';
@@ -4839,14 +4968,12 @@ function vMinha(){
     h+='<div class="sec-t">Próximos cultos da equipe</div><div class="card">';
     outros.forEach(e=>{const s=statusEvento(e);
       const eqs=e.teamIds.map(t=>{const x=team(t);return x&&x.nome;}).filter(Boolean).join(' · ');
+      const d=pd(e.data);
       h+='<div class="row" onclick="go(\'evento\',\''+e.id+'\')">'
-       +'<div class="avatar" style="background:var(--brand-soft);color:var(--brand);'
-       +'font-size:11px;line-height:1.1;text-align:center">'
-       +pd(e.data).getDate()+'<br>'+MES[pd(e.data).getMonth()].toUpperCase().slice(0,3)+'</div>'
+       +'<div class="dchip"><b>'+d.getDate()+'</b><span>'+DOW[d.getDay()]+'</span></div>'
        +'<div class="grow"><div class="t">'+esc(e.titulo)+'</div>'
-       +'<div class="s">'+fmt(e.data)+' &middot; '+esc(eqs||'sem equipe')+'</div></div>'
-       +'<span class="pill'+(s.preenchidos<s.total?' warn':' mut')+'">'
-       +s.preenchidos+'/'+s.total+'</span><span class="chev">&#8250;</span></div>';});
+       +'<div class="s">'+MES[d.getMonth()]+' &middot; '+esc(e.hora)+'</div>'+faixaVagas(s)+'</div>'
+       +'<span class="chev">&#8250;</span></div>';});
     h+='</div><p class="sub" style="font-size:12.5px">Toque num culto para ver a escala completa &mdash; '
      +'todas as equipes e quem está em cada função.</p>';
   }
