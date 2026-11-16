@@ -1,5 +1,6 @@
-const CACHE = 'escala-v8';
-const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const CACHE = 'escala-v9';
+const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png',
+  './icon-maskable-512.png', './apple-touch-icon.png', './favicon.svg'];
 
 /* ---------- ATUALIZACAO ----------
    Esta parte existe por causa de um sintoma concreto: a cada publicacao, o
