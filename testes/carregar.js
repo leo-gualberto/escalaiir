@@ -83,6 +83,8 @@ function carregar() {
     'slotsDoEvento', 'escalaDe', 'candidatos', 'gerarEscala', 'definir', 'statusEvento',
     // escopo por equipe
     'escopoDe', 'podeEquipe', 'podePessoa', 'statusEscopo', 'trocaNoEscopo', 'pessoasNoEscopo',
+    // foto de perfil
+    'rosto',
     'primeiroDiaDaSemana', 'datasRecorrentes',
     'carga', 'cargaJanela', 'cargaCiclo', 'cicloDe', 'cicloAtual', 'nomeDoCiclo',
     'mapaCarga', 'inicioJanela', 'ultimaVez', 'textoWhats',

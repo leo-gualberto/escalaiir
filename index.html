@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-<meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -464,6 +464,301 @@ body .cal .d.esc.no{background:var(--brand);color:#fff;text-decoration:none;box-
   .faixa i.es,.leg-faixa i.es{opacity:.5}
   .faixa.barra i.es{opacity:.5!important}
 }
+
+/* ===================== INTERFACE NO PADRAO APPLE (nov/2026) =====================
+   Segue as Human Interface Guidelines do iOS: cores e rotulos do sistema,
+   titulo grande, listas agrupadas com cantos amplos, botoes de vidro na barra
+   de navegacao, barra de abas flutuante, icone de calendario nas datas, aneis
+   de progresso e simbolos de status preenchidos. O funcionamento e o mesmo;
+   so a forma muda. Este bloco vem por ultimo e prevalece sobre os anteriores. */
+:root{
+  --bg:#F2F2F7; --card:#FFFFFF; --ink:#000000; --muted:rgba(60,60,67,.6); --label3:rgba(60,60,67,.3);
+  --line:rgba(60,60,67,.18); --sep:rgba(60,60,67,.29); --line-forte:rgba(60,60,67,.3); --fill:rgba(120,120,128,.12);
+  --ok:#248A3D; --ok-soft:rgba(52,199,89,.14); --warn:#B25000; --warn-soft:rgba(255,149,0,.14);
+  --bad:#D70015; --bad-soft:rgba(255,59,48,.12);
+  --sym-ok:#34C759; --sym-warn:#FF9500; --sym-bad:#FF3B30;
+  --glass:rgba(255,255,255,.72); --glass-b:rgba(255,255,255,.85); --glass-sombra:0 6px 18px rgba(0,0,0,.08);
+}
+body[data-papel]{--brand:#007AFF;--brand-soft:rgba(0,122,255,.12);--brand-ink:#0040DD;--on-brand:#FFFFFF}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#000000;--card:#1C1C1E;--ink:#FFFFFF;--muted:rgba(235,235,245,.6);--label3:rgba(235,235,245,.3);
+    --line:rgba(84,84,88,.5);--sep:rgba(84,84,88,.65);--line-forte:rgba(235,235,245,.3);--fill:rgba(120,120,128,.24);
+    --ok:#30D158;--warn:#FF9F0A;--bad:#FF453A;--sym-ok:#30D158;--sym-warn:#FF9F0A;--sym-bad:#FF453A;
+    --glass:rgba(44,44,46,.7);--glass-b:rgba(255,255,255,.12);--glass-sombra:0 6px 18px rgba(0,0,0,.4)}
+  body[data-papel]{--brand:#0A84FF;--brand-soft:rgba(10,132,255,.2);--brand-ink:#64B0FF}
+}
+body{background:var(--bg);color:var(--ink);font-size:17px;letter-spacing:-.01em}
+#app{padding:0 0 calc(112px + var(--safe-b))}
+
+/* ---- vidro: botoes redondos da barra de navegacao ---- */
+body button.circ,body .hero .add,body button.conx{width:44px;height:44px;padding:0;border-radius:50%;flex:none;
+  display:grid;place-items:center;position:relative;color:var(--ink);font-size:24px;font-weight:400;line-height:1;
+  background:var(--glass);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
+  box-shadow:inset 0 0 0 .5px var(--glass-b),var(--glass-sombra);border:0;letter-spacing:0}
+body .hero .add:active,body button.circ:active{opacity:.6}
+body button.conx i{position:absolute;right:8px;bottom:9px;width:10px;height:10px;border-radius:50%;
+  box-shadow:0 0 0 2px var(--bg);animation:none}
+body button.conx.on,body button.conx.off,body button.conx.bad,body button.conx.sync{background:var(--glass);color:var(--ink)}
+body button.conx.on i{background:var(--sym-ok)}
+body button.conx.off i{background:#FFCC00}
+body button.conx.bad i{background:var(--sym-bad)}
+body button.conx.sync i{background:var(--brand)}
+body .hero .add .bdg{position:absolute;top:-3px;right:-3px;left:auto;margin:0}
+
+/* ---- cabecalho com titulo grande ---- */
+body .hero{background:transparent;color:var(--ink);border-radius:0;margin:0;box-shadow:none;
+  padding:calc(var(--safe-t) + 6px) 20px 6px}
+.hero-nav{display:flex;align-items:center;gap:10px;height:50px}
+.hero-logo{line-height:0}
+.hero-logo svg{border-radius:8px}
+.hero-sobre{font-size:13px;font-weight:600;color:var(--muted);margin-top:8px}
+body .hero h1{font-size:34px;font-weight:700;letter-spacing:-.022em;line-height:1.15;color:var(--ink);margin:0}
+body .hero p{font-size:15px;color:var(--muted);opacity:1;margin-top:4px}
+body .hero p b,.resumo b{color:var(--ink)}
+.resumo{font-size:15px;color:var(--muted);margin-top:6px;gap:2px 14px}
+
+/* ---- barra de navegacao das telas internas ---- */
+body .fixo{background:transparent!important;border:0!important;box-shadow:none;gap:10px;
+  padding:calc(var(--safe-t) + 6px) 16px 8px;transition:background .2s}
+body .fixo.mostra{background:var(--glass)!important;backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);box-shadow:0 .5px 0 var(--sep)}
+body .fixo b{text-align:center;font-size:17px;font-weight:600}
+body .fixo button.circ{color:var(--ink)}
+body .volta{padding:calc(var(--safe-t) + 6px) 16px 0;background:transparent}
+body .volta button.circ{color:var(--ink)}
+.titulo-pag{font-size:34px;font-weight:700;letter-spacing:-.022em;margin:10px 20px 2px;line-height:1.15}
+.titulo-pag + .sub{font-size:15px;margin:2px 20px 0}
+.cab-culto{display:flex;gap:14px;align-items:center;padding:0 20px;margin-top:4px}
+.cab-txt{min-width:0}
+.cab-culto h1{font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.15;margin:0}
+.cab-culto p{font-size:15px;color:var(--muted);margin-top:2px}
+
+/* ---- listas agrupadas ---- */
+body .card{background:var(--card);border-radius:22px;border:0;box-shadow:none;margin:0 16px 12px;overflow:hidden}
+body .row{padding:11px 16px;min-height:60px;gap:12px;border-bottom:0;position:relative}
+body .row:not(:last-child):after{content:"";position:absolute;left:16px;right:0;bottom:0;height:.5px;background:var(--sep)}
+body .row:has(.dchip):not(:last-child):after,body .row:has(.avatar):not(:last-child):after{left:72px}
+body .row .t{font-size:17px;font-weight:400;line-height:1.25}
+body .row .s{font-size:15px;color:var(--muted);line-height:1.3;margin-top:1px}
+body .chev{color:var(--label3);font-size:24px;font-weight:300}
+body .sec-t{font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.015em;text-transform:none;margin:26px 20px 8px}
+body .avatar{width:40px;height:40px;font-size:15px;font-weight:600;background:var(--fill);color:var(--muted)}
+body .empty{color:var(--muted)}
+body .sub{color:var(--muted)}
+.dir{display:flex;align-items:center;gap:10px;flex:none}
+.hora-ch{font-size:17px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ---- data como o icone do app Calendario ---- */
+body .dchip{width:44px;height:44px;border-radius:11px;padding:0;flex:none;background:var(--card);
+  box-shadow:inset 0 0 0 .5px var(--sep);display:flex;flex-direction:column-reverse;align-items:center;justify-content:center}
+body .dchip span{font-size:9.5px;font-weight:600;color:var(--sym-bad);text-transform:uppercase;letter-spacing:.03em;
+  line-height:1;opacity:1}
+body .dchip b{font-size:21px;font-weight:500;color:var(--ink);line-height:1.08;letter-spacing:-.02em}
+body .dchip.hoje{background:var(--sym-bad);box-shadow:none}
+body .dchip.hoje b,body .dchip.hoje span{color:#fff}
+body .dchip.grande{width:62px;height:62px;border-radius:15px}
+body .dchip.grande span{font-size:12px}
+body .dchip.grande b{font-size:30px}
+
+/* ---- aneis, simbolos e textos de status ---- */
+.anel{flex:none;display:block}
+.simb{width:22px;height:22px;flex:none;display:block}
+.pill{background:transparent!important;padding:0!important;border-radius:0;font-size:13px;font-weight:600}
+.pill.mut{color:var(--muted)}
+.vg{font-size:15px;font-weight:400}
+.vg.warn{color:var(--warn)}.vg.ok{color:var(--ok)}.vg.mut{color:var(--muted)}
+
+/* ---- botoes ---- */
+body button,body .btn{border-radius:14px;padding:14px 18px;font-size:17px;font-weight:600;background:var(--brand);color:#fff}
+body .btn2{background:var(--fill);color:var(--brand);border:0}
+body .btn-sm{border-radius:12px;padding:10px 14px;font-size:15px}
+body .btn-d{color:var(--bad)}
+body .btn2.btn-d{background:var(--fill)}
+body button.cap{border-radius:999px;height:50px;padding:0 20px;display:flex;align-items:center;justify-content:center;
+  gap:7px;font-size:17px;font-weight:600;white-space:nowrap}
+body button.cap.tint{background:var(--brand);color:#fff;width:100%}
+.acoes-ev{margin:4px 0 10px}
+.acoes-ev + .pad .btn2{border-radius:999px;color:var(--brand)}
+body button.cap-mini{width:auto;padding:6px 13px;border-radius:999px;background:var(--brand-soft);color:var(--brand);
+  font-size:14px;font-weight:600}
+body .slot button.msg,body button.msg{width:32px;height:32px;padding:0;border-radius:50%;background:var(--fill);
+  color:var(--brand);display:grid;place-items:center;flex:none;border:0}
+.escalar-txt{color:var(--brand);font-size:15px;font-weight:500;flex:none}
+
+/* ---- avisos como celulas ---- */
+body .warnbox,body .infobox,body .okbox{background:var(--card);color:var(--ink);border:0;border-radius:18px;
+  margin:0 16px 12px;padding:13px 16px;font-size:15px;font-weight:500}
+body .warnbox svg{color:var(--sym-warn)}
+body .infobox svg{color:var(--brand)}
+body .avisos{background:var(--card);border:0;border-radius:18px;margin:0 16px 12px}
+body .avisos-h{color:var(--ink);font-size:15px;padding:14px 16px}
+body .avisos-h svg{color:var(--sym-warn)}
+
+/* ---- campos ---- */
+body input,body select,body textarea{background:var(--card);border:0;border-radius:12px;font-size:17px;padding:13px 14px}
+body label{font-size:13px;font-weight:600;color:var(--muted);margin-left:4px}
+body .busca input{background:var(--fill);border-radius:12px;height:40px;padding-top:0;padding-bottom:0;font-size:17px}
+.sheet .busca input{background:var(--fill)}
+body .chip{border-radius:999px;border:0;background:var(--fill);color:var(--ink)}
+body .chip.on{background:var(--brand);color:#fff}
+
+/* ---- a proxima escala, como um convite ---- */
+.prox{margin:16px 16px 4px;border-radius:30px;padding:20px 20px 18px;color:#fff;position:relative;overflow:hidden;
+  background:linear-gradient(160deg,#1A8CFF 0%,#0062D6 72%,#0052BA 100%)}
+.prox-grade{position:absolute;right:-22px;top:-22px;width:150px;height:150px;fill:#fff;opacity:.12}
+.prox-grade .cheia{opacity:2.4}
+.prox-toque{cursor:pointer;position:relative}
+.prox-quando{font-size:15px;font-weight:600;opacity:.85;display:flex;align-items:center;gap:6px}
+.prox h2{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.12;margin:4px 0 3px;color:#fff}
+.prox-papel{font-size:16px;opacity:.92}
+.prox-alerta{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:14px;font-weight:600;
+  background:rgba(255,255,255,.2);padding:5px 10px;border-radius:999px}
+.prox-horas{display:flex;gap:34px;margin:18px 0 18px}
+.prox-horas small{display:block;font-size:13px;font-weight:600;opacity:.8}
+.prox-horas b{display:block;font-size:44px;font-weight:600;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums}
+.prox-horas .sec b{font-size:28px;opacity:.85;margin-top:10px}
+.capsulas{display:flex;gap:10px;position:relative}
+.capsulas .cap{flex:1}
+body button.cap.branca{background:#fff;color:#0062D6}
+body button.cap.vidro-claro{background:rgba(255,255,255,.2);color:#fff;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.35)}
+body button.cap.redondo{flex:none;width:50px;padding:0}
+
+/* ---- culto: resumo e equipes ---- */
+.res-ev{display:flex;align-items:center;gap:18px;padding:16px;margin-top:18px!important}
+.res-ev .linhas{flex:1;min-width:0}
+.lin{display:flex;align-items:center;gap:8px;font-size:15px;padding:3px 0}
+.lin i{width:10px;height:10px;border-radius:50%;flex:none}
+.lin b{margin-left:auto;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+body .teamhead{margin:26px 20px 8px;gap:8px}
+body .teamhead h2{font-size:20px;font-weight:700;letter-spacing:-.015em}
+body .teamhead .dot{width:10px;height:10px;border-radius:3px}
+body .teamhead .pill.mut{font-size:15px;font-weight:400;color:var(--muted)}
+body .slot{padding:10px 16px;min-height:60px;gap:12px;border-bottom:0;position:relative}
+body .slot:not(:last-child):after{content:"";position:absolute;left:68px;right:0;bottom:0;height:.5px;background:var(--sep)}
+body .slot .avatar{width:40px;height:40px;font-size:14px;font-weight:600}
+body .slot .avatar.vaga{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1.5px var(--line-forte)}
+body .slot .grow{display:flex;flex-direction:column-reverse;flex:1;min-width:0}
+body .slot .nm{font-size:17px;font-weight:400}
+body .slot .nm.vazio{color:var(--muted);font-style:normal}
+body .slot .fn{font-size:15px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
+.slot .tel{display:none}
+
+/* ---- barra de abas flutuante, de vidro ---- */
+body nav{left:16px;right:16px;bottom:calc(var(--safe-b) + 12px);height:64px;border-radius:32px;border:0;
+  padding:0 6px;align-items:center;background:var(--glass);
+  backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);
+  box-shadow:inset 0 0 0 .5px var(--glass-b),0 8px 26px rgba(0,0,0,.14)}
+body nav button{padding:6px 0 5px;border-radius:26px;font-size:10px;font-weight:600;gap:1px;color:var(--ink);background:none}
+body nav button.on{color:var(--brand);background:var(--fill)}
+body nav .navico{height:26px;width:auto;background:none!important}
+body nav button svg{width:25px;height:25px;stroke-width:1.8}
+body nav .bdg{top:2px}
+
+/* ---- folhas ---- */
+body .sheet{background:var(--bg);border-radius:38px 38px 0 0}
+body .sheet:before{content:"";display:block;width:36px;height:5px;border-radius:3px;background:var(--label3);margin:6px auto 0}
+body .sheet-h{background:var(--bg);border-bottom:0;padding:8px 16px 6px}
+body .sheet-h b{text-align:center;font-size:17px;font-weight:600}
+body .sheet-h button{color:var(--brand);font-weight:400}
+body .sheet .card{margin:0}
+body .sheet .sec-t{font-size:13px;font-weight:600;color:var(--muted);margin:18px 4px 6px!important}
+
+/* ---- computador: menu lateral continua, com o mesmo vidro ---- */
+@media (min-width:1000px){
+  body nav{top:0;bottom:0;left:0;right:auto;width:232px;height:auto;border-radius:0;flex-direction:column;
+    justify-content:flex-start;padding:22px 14px;gap:2px;background:var(--card);backdrop-filter:none;
+    box-shadow:inset -.5px 0 0 var(--sep)}
+  body nav button{flex:none;width:100%;flex-direction:row;justify-content:flex-start;gap:12px;font-size:15px;
+    padding:10px 13px;border-radius:12px}
+  body nav .bdg{position:static;margin-left:auto}
+  #app{padding:12px 0 56px}
+  body .hero{padding-top:8px}
+  body .fixo,body .volta{padding-top:10px}
+}
+
+/* foto de perfil */
+.avatar{overflow:hidden}
+.avatar img.foto{width:100%;height:100%;object-fit:cover;display:block}
+.foto-bloco{display:flex;flex-direction:column;align-items:center;gap:8px;margin:14px 16px 18px}
+body .avatar.foto-grande{width:96px;height:96px;font-size:34px;font-weight:600}
+.foto-acoes{display:flex;gap:18px}
+body button.b-link{width:auto;background:none;color:var(--brand);padding:4px 2px;font-size:16px;font-weight:500}
+body button.b-link.vermelho{color:var(--bad)}
+/* adicionar equipe ao culto */
+.mais-eq{margin-top:18px!important}
+#fTeams .thora{width:136px!important;font-size:16px;padding:12px 10px}
+.mais-eq .t{color:var(--brand)}
+body .avatar.add-eq{background:var(--brand-soft);color:var(--brand)}
+.eq-cor{display:inline-block;width:9px;height:9px;border-radius:2.5px;margin-right:8px;vertical-align:0}
+body .chip.on .eq-cor{box-shadow:0 0 0 1.5px #fff}
+
+/* ===================== LIQUID GLASS, SUAVE =====================
+   O vidro do iOS 26 em tres camadas, so nos elementos que flutuam sobre o
+   conteudo (barra de abas, botoes redondos, barra de navegacao ao rolar,
+   capsulas do cartao): 1) o fundo desfocado e um pouco mais saturado, para a
+   cor de baixo atravessar; 2) uma luz na borda de cima e um reflexo difuso,
+   que dao volume; 3) um leve afundar ao toque, com mola. Listas e textos
+   continuam opacos: vidro em tudo cansa e atrapalha a leitura. */
+:root{
+  --lg-fundo:linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.42));
+  --lg-filtro:blur(18px) saturate(190%) brightness(1.04);
+  --lg-borda:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -.5px 0 rgba(255,255,255,.35),
+    inset 0 0 0 .5px rgba(255,255,255,.55);
+  --lg-sombra:0 1px 2px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.10);
+  --lg-brilho:radial-gradient(120% 70% at 30% -10%,rgba(255,255,255,.75),rgba(255,255,255,0) 60%);
+  --lg-mola:cubic-bezier(.34,1.56,.64,1);
+}
+@media (prefers-color-scheme:dark){:root{
+  --lg-fundo:linear-gradient(180deg,rgba(72,72,78,.55),rgba(44,44,48,.45));
+  --lg-filtro:blur(18px) saturate(170%) brightness(1.1);
+  --lg-borda:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -.5px 0 rgba(255,255,255,.06),
+    inset 0 0 0 .5px rgba(255,255,255,.12);
+  --lg-sombra:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.45);
+  --lg-brilho:radial-gradient(120% 70% at 30% -10%,rgba(255,255,255,.16),rgba(255,255,255,0) 60%);
+}}
+body nav,body button.circ,body .hero .add,body button.conx,body .fixo.mostra{
+  background:var(--lg-fundo)!important;
+  backdrop-filter:var(--lg-filtro);-webkit-backdrop-filter:var(--lg-filtro);
+  box-shadow:var(--lg-borda),var(--lg-sombra)}
+body .fixo.mostra{box-shadow:var(--lg-borda),0 .5px 0 var(--sep)}
+/* o reflexo: uma camada por cima, sem capturar o toque */
+body nav:before,body button.circ:before,body .hero .add:before,body button.conx:before{
+  content:"";position:absolute;inset:0;border-radius:inherit;background:var(--lg-brilho);pointer-events:none}
+body nav{overflow:visible}
+body nav button{position:relative;z-index:1;transition:transform .35s var(--lg-mola),background .2s}
+/* a aba ativa e uma gota de vidro dentro do vidro */
+body nav button.on{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,.35));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 .5px rgba(255,255,255,.6),0 2px 8px rgba(0,0,0,.08)}
+@media (prefers-color-scheme:dark){body nav button.on{
+  background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.08));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),inset 0 0 0 .5px rgba(255,255,255,.12)}}
+/* toque: o vidro afunda um pouco e volta com mola */
+body button.circ,body .hero .add,body button.conx,body button.cap{transition:transform .35s var(--lg-mola)}
+body button.circ:active,body .hero .add:active,body button.conx:active,body nav button:active,body button.cap:active{
+  transform:scale(.94);opacity:1}
+/* capsulas de vidro do cartao azul ganham a mesma luz na borda */
+body button.cap.vidro-claro{background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,.14));
+  backdrop-filter:blur(10px) saturate(160%);-webkit-backdrop-filter:blur(10px) saturate(160%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 0 0 .5px rgba(255,255,255,.3)}
+body button.cap.branca{box-shadow:inset 0 -1px 0 rgba(0,0,0,.06),0 4px 12px rgba(0,40,100,.18)}
+/* folha: a alca e o topo com a mesma luz */
+body .sheet{box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 -10px 30px rgba(0,0,0,.18)}
+/* acessibilidade: quem pede menos transparencia ou menos movimento recebe
+   superficie solida e nenhuma mola */
+@media (prefers-reduced-transparency:reduce){
+  body nav,body button.circ,body .hero .add,body button.conx,body .fixo.mostra{
+    background:var(--card)!important;backdrop-filter:none;-webkit-backdrop-filter:none}
+  body nav:before,body button.circ:before,body .hero .add:before,body button.conx:before{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  body nav button,body button.circ,body .hero .add,body button.conx,body button.cap{transition:none}
+  body button.circ:active,body .hero .add:active,body button.conx:active,body nav button:active,body button.cap:active{transform:none}
+}
+@media (min-width:1000px){
+  body nav{background:var(--card)!important;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:inset -.5px 0 0 var(--sep)}
+  body nav:before{display:none}
+  body nav button.on{background:var(--brand-soft);box-shadow:none}
+}
 </style>
 </head>
 <body>
@@ -718,6 +1013,15 @@ function chegada(ev,tid){
 }
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ini=n=>n.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+/* O avatar de uma pessoa: a foto, se ela tiver, ou as iniciais. A foto vem do
+   banco e foi escrita por outra pessoa da igreja, entao so entra se for de
+   fato uma imagem pequena em base64 -- nada de URL externa nem HTML. */
+const FOTO_OK=/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/;
+function rosto(p){
+  if(p&&p.foto&&p.foto.length<60000&&FOTO_OK.test(p.foto))
+    return '<img class="foto" src="'+p.foto+'" alt="">';
+  return esc(ini((p&&p.nome)||'?'));
+}
 const team=id=>DB.teams.find(t=>t.id===id);
 const pessoa=id=>DB.pessoas.find(p=>p.id===id);
 const evento=id=>DB.eventos.find(e=>e.id===id);
@@ -1187,7 +1491,10 @@ function seloConexao(){
   else if(NUVEM_ESTADO==='erro'){cls='bad';txt='erro';}
   else if(pendentes()){cls='sync';txt='salvando';}
   else{cls='on';txt='online';}
-  return '<span class="conx '+cls+'" onclick="detalheConexao()"><i></i>'+txt+'</span>';
+  /* a nuvem num botao de vidro, com o ponto de cor do estado; o nome do
+     estado vai para o leitor de tela e para a folha que abre no toque */
+  return '<button class="conx '+cls+'" onclick="detalheConexao()" aria-label="Conexão: '+txt+'" title="'+txt+'">'
+   +ico('nuvem',20)+'<i></i></button>';
 }
 function detalheConexao(){
   const n=pendentes();
@@ -1228,8 +1535,23 @@ const ICONES={
   info:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M12 11v6 M12 7.5h.01',
   conversa:'M12 4.5c-4.2 0-7.6 2.9-7.6 6.4 0 1.9 1 3.7 2.7 4.9L6.2 19.5l3.9-1.7c.6.1 1.2.2 1.9.2 4.2 0 7.6-2.9 7.6-6.4S16.2 4.5 12 4.5Z',
   triste:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M8.5 16c.9-1.3 2.1-2 3.5-2s2.6.7 3.5 2 M9 9.5h.01 M15 9.5h.01',
-  lupa:'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z M20 20l-4-4'
+  lupa:'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z M20 20l-4-4',
+  voltar:'M15 5l-7 7 7 7',
+  mais:'M12 5v14 M5 12h14',
+  enviar:'M12 3v12 M7.5 7.5 12 3l4.5 4.5 M5 14v5.5h14V14',
+  tres:'M4.5 12a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0 M10.5 12a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0 M16.5 12a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0'
 };
+/* Simbolo de status, como os SF Symbols preenchidos: circulo de cor com o
+   desenho em branco. A cor sozinha nao basta (daltonismo), por isso cada um
+   tem forma propria e rotulo para leitor de tela. */
+function simbStatus(k){
+  const cor={ok:'var(--sym-ok)',espera:'var(--sym-warn)',bad:'var(--sym-bad)'}[k];
+  const dentro={ok:'<path d="M7.5 12.3l3 3 6-6.3"/>',espera:'<path d="M12 7v5.2l3 1.8"/>',
+    bad:'<path d="M12 7v6.2"/><path d="M12 16.6h.01"/>'}[k];
+  const rot={ok:'Confirmado',espera:'Aguardando confirmação',bad:'Precisa trocar'}[k];
+  return '<svg class="simb" viewBox="0 0 24 24" role="img" aria-label="'+rot+'"><circle cx="12" cy="12" r="10" style="fill:'+cor+'"/>'
+   +'<g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">'+dentro+'</g></svg>';
+}
 /* O simbolo do app: uma grade de calendario em que uma das vagas ja tem
    alguem. E o mesmo desenho do icone da tela de inicio (marca/). */
 function logoApp(tam){
@@ -1306,40 +1628,43 @@ function rodape(){
    +'Escala da Equipe '+VERSAO+'<br>'
    +'Desenvolvido por @leo_gualberto</p>';
 }
-function hero(titulo,sub,btn,extra){
+function hero(titulo,sub,btn,extra,sobre){
   const me=souEu(), painel=temPainel(me);
   const escopo=escopoDe(me);
   const selo=painel?(ehAdmin(me)?'Administrador'
     :(escopo?'Líder · '+nomesEscopo(escopo):'Painel do líder')):'Voluntário';
   const org=(DB.config&&DB.config.igreja)||'';
-  return '<div class="hero"><div class="hero-top">'
-   +'<span class="hero-logo">'+logoApp(32)+'</span>'
-   +'<span class="hero-quem"><b>'+esc(org||'Escala da Equipe')+'</b><span>'+selo+'</span></span>'
+  /* a linha pequena acima do titulo: a igreja e o papel de quem esta vendo
+     (ou, na tela do voluntario, a data de hoje) */
+  const linha=sobre!=null?sobre:esc(org||'Escala da Equipe')+(painel?', '+esc(selo):'');
+  return '<div class="hero"><div class="hero-nav">'
+   +'<span class="hero-logo">'+logoApp(30)+'</span>'
    +'<span class="hero-sp"></span>'+seloConexao()+(btn||'')+'</div>'
+   +'<div class="hero-sobre">'+linha+'</div>'
    +'<h1>'+esc(titulo)+'</h1>'
    +(sub?'<p>'+sub+'</p>':'')
    +(extra||'')+'</div>';
 }
 const topo=(titulo,btn)=>hero(titulo,'',btn);
-const voltarBar=t=>'<div class="volta"><button onclick="voltar()">&#8249; Voltar</button></div>'
-  +'<h1 style="margin-top:6px">'+esc(t)+'</h1>';
+const voltarBar=t=>'<div class="volta"><button class="circ" aria-label="Voltar" onclick="voltar()">'+ico('voltar',22)+'</button></div>'
+  +'<h1 class="titulo-pag">'+esc(t)+'</h1>';
 /* numeros do topo: <div><b>3</b><span>rotulo</span></div> */
 /* os numeros do topo viram uma linha de texto: sao contexto, nao manchete */
 const numeros=arr=>'<p class="resumo">'+arr.map(x=>'<span><b>'+x[0]+'</b> '+x[1]+'</span>').join('')+'</p>';
 /* As vagas de um culto em quadradinhos, a mesma grade do logo. Acima de
    uma linha e meia de quadrados vira barra, para nao virar textura. */
 function faixaVagas(s,grande){
+  /* Dois aneis, como os do app Fitness: o de fora sao as vagas preenchidas,
+     o de dentro as confirmadas. Fechou os dois, o culto esta pronto. */
   if(!s||!s.total)return '';
-  const n=s.total, rot=s.preenchidos+' de '+n+' vagas preenchidas, '+s.confirmados+' confirmadas';
-  if(n>(grande?36:24)){
-    const pc=x=>Math.round(x/n*100);
-    return '<div class="faixa barra'+(grande?' g':'')+'" role="img" aria-label="'+rot+'">'
-     +'<i class="es" style="left:0;width:'+pc(s.preenchidos)+'%;background:var(--brand);opacity:.32"></i>'
-     +'<i class="cf" style="left:0;width:'+pc(s.confirmados)+'%"></i></div>';
-  }
-  let o='';
-  for(let k=0;k<n;k++)o+='<i class="'+(k<s.confirmados?'cf':k<s.preenchidos?'es':'vz')+'"></i>';
-  return '<div class="faixa'+(grande?' g':'')+'" role="img" aria-label="'+rot+'">'+o+'</div>';
+  const tam=grande?96:34, p=s.preenchidos/s.total, c=s.confirmados/s.total;
+  const rot=s.preenchidos+' de '+s.total+' vagas preenchidas, '+s.confirmados+' confirmadas';
+  const arco=(r,v,cor)=>{const C=2*Math.PI*r;
+    return '<circle cx="18" cy="18" r="'+r+'" fill="none" style="stroke:'+cor+'" stroke-opacity=".18" stroke-width="5"/>'
+     +(v>0?'<circle cx="18" cy="18" r="'+r+'" fill="none" style="stroke:'+cor+'" stroke-width="5" stroke-linecap="round" '
+       +'stroke-dasharray="'+(C*Math.min(1,v)).toFixed(2)+' '+C.toFixed(2)+'" transform="rotate(-90 18 18)"/>':'');};
+  return '<svg class="anel" width="'+tam+'" height="'+tam+'" viewBox="0 0 36 36" role="img" aria-label="'+rot+'">'
+   +arco(15,p,'var(--brand)')+arco(9.5,c,'var(--sym-ok)')+'</svg>';
 }
 
 /* ============ ABA: ESCALAS ============ */
@@ -1348,7 +1673,7 @@ function vEscalas(){
   const vagas=f.reduce((n,e)=>{const s=statusEscopo(e);return n+(s.total-s.preenchidos);},0);
   const conf=f.reduce((n,e)=>n+statusEscopo(e).confirmados,0);
   const tr=trocasAbertas().filter(trocaNoEscopo);
-  let h=hero('Escalas','Cultos e eventos da sua igreja',
+  let h=hero('Escalas','',
     euPosso('eventos')?'<button class="add" aria-label="Novo culto" onclick="novoEvento()">+</button>':'',
     f.length?numeros([[f.length,f.length===1?'culto':'cultos'],[vagas,'vagas abertas'],[conf,'confirmados']]):'');
   /* todos os avisos juntos, para o bloco se recolher quando forem varios */
@@ -1407,10 +1732,9 @@ function vEscalas(){
         +'<div class="grow"><div class="t">'+esc(ev.titulo)+'</div>'
         /* a contagem entra na linha do horario: a faixa de vagas fica com a
            largura toda e o titulo nao quebra */
-        +'<div class="s">'+esc(ev.hora)+' &middot; <span class="vg '+cor+'">'+txt+'</span>'
-        +(temInfo(ev)?' &middot; '+ico('info',13)+' recado':'')+'</div>'
-        +faixaVagas(s)+'</div>'
-        +'<span class="chev">&#8250;</span></div>';});
+        +'<div class="s">'+esc(ev.hora)+', <span class="vg '+cor+'">'+txt+'</span>'
+        +(temInfo(ev)?' '+ico('info',14):'')+'</div></div>'
+        +faixaVagas(s)+'<span class="chev">&#8250;</span></div>';});
     if(mesAberto!==null)h+='</div>';}
   const p=passados().slice(0,5);
   if(p.length){h+='<div class="sec-t">Anteriores</div><div class="card">';
@@ -1430,21 +1754,25 @@ function vEvento(id){
   const s=statusEvento(ev);
   const falta=s.preenchidos<s.total;
   const pct=n=>s.total?Math.round(n/s.total*100):0;
-  let h='<div class="fixo"><button onclick="voltar()">&#8249; Voltar</button>'
+  const acoes=acoesEvento(ev,s);
+  const q=diasAte(ev.data), d=pd(ev.data);
+  const quando=q===0?'Hoje':q===1?'Amanhã':q===-1?'Ontem':fmtLong(ev.data);
+  /* barra de navegacao: so botoes de vidro; o titulo entra nela ao rolar */
+  let h='<div class="fixo"><button class="circ" aria-label="Voltar" onclick="voltar()">'+ico('voltar',22)+'</button>'
    +'<b>'+esc(ev.titulo)+'</b>'
-   +'<span class="pill '+(falta?'warn':'ok')+'">'+s.preenchidos+'/'+s.total+'</span></div>';
-  h+='<h1 id="tituloGrande" style="margin-top:2px">'+esc(ev.titulo)+'</h1>';
-  h+='<p class="sub">'+fmtLong(ev.data)+' &middot; culto às '+esc(ev.hora)+'</p>';
-  h+='<div class="pad"><div class="card" style="margin:0 0 12px;padding:14px 16px">'
-    +'<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700">'
-    +'<span>'+s.preenchidos+' de '+s.total+' posições</span>'
-    +'<span style="color:var(--ok)">'+s.confirmados+' confirmados</span></div>'
-    +faixaVagas(s,true)
-    +'<div class="leg-faixa"><span><i class="cf"></i>confirmado</span><span><i class="es"></i>escalado</span>'
-    +'<span><i class="vz"></i>vago</span></div>'
-    +(s.recusados?'<div style="color:var(--bad);font-size:13px;font-weight:600;margin-top:8px">'
-      +s.recusados+' pessoa(s) precisam trocar esta data</div>':'')
-    +'</div></div>';
+   +'<button class="circ" aria-label="Compartilhar a escala" onclick="compartilhar(\''+ev.id+'\')">'+ico('enviar',20)+'</button>'
+   +(acoes.length>1?'<button class="circ" aria-label="Mais ações" onclick="maisAcoesEvento(\''+ev.id+'\')">'+ico('tres',22)+'</button>':'')
+   +'</div>';
+  h+='<div class="cab-culto"><div class="dchip grande'+(ev.data===hojeIso()?' hoje':'')+'"><b>'+d.getDate()+'</b>'
+   +'<span>'+DOW[d.getDay()]+'</span></div><div class="cab-txt"><h1 id="tituloGrande">'+esc(ev.titulo)+'</h1>'
+   +'<p>'+quando+', '+esc(ev.hora)+'</p></div></div>';
+  const aguardando=s.preenchidos-s.confirmados-s.recusados;
+  if(s.total)h+='<div class="card res-ev">'+faixaVagas(s,true)+'<div class="linhas">'
+   +'<div class="lin"><i style="background:var(--brand)"></i>Preenchidas<b>'+s.preenchidos+' de '+s.total+'</b></div>'
+   +'<div class="lin"><i style="background:var(--sym-ok)"></i>Confirmados<b>'+s.confirmados+'</b></div>'
+   +'<div class="lin"><i style="background:var(--sym-warn)"></i>Aguardando<b>'+aguardando+'</b></div>'
+   +(s.recusados?'<div class="lin"><i style="background:var(--sym-bad)"></i>Precisam trocar<b>'+s.recusados+'</b></div>':'')
+   +'</div></div>';
   h+=cartaoInfoCulto(ev);
   /* quem serve neste culto tem um atalho para resolver a propria vaga aqui
      mesmo, sem ter de voltar e procurar na lista */
@@ -1460,15 +1788,10 @@ function vEvento(id){
         +'Pedir troca da minha vaga</button>')
      +'</div>';
   }
-  /* um botao principal — o proximo passo deste culto — e o resto no menu */
-  const acoes=acoesEvento(ev,s);
+  /* um botao principal, em capsula: o proximo passo deste culto. O resto
+     fica no botao de tres pontos da barra. */
   if(acoes.length)
-    h+='<div class="pad" style="display:flex;gap:8px;margin-bottom:6px">'
-      +'<button class="btn-sm" style="flex:1" onclick="'+acoes[0][1]+'">'+esc(acoes[0][0])+'</button>'
-      +(acoes.length>1
-        ?'<button class="btn2 btn-sm" style="flex:none;width:auto;padding:9px 16px" '
-         +'onclick="maisAcoesEvento(\''+ev.id+'\')">Mais&nbsp;&#8943;</button>':'')
-      +'</div>';
+    h+='<div class="pad acoes-ev"><button class="cap tint" onclick="'+acoes[0][1]+'">'+esc(acoes[0][0])+'</button></div>';
   h+=trocaHtml;
   const verContato=vejoContatos(ev);
   ev.teamIds.forEach(tid=>{const t=team(tid); if(!t)return;
@@ -1485,28 +1808,32 @@ function vEvento(id){
       /* "Aguardando" era o estado de quase toda vaga e aparecia quinze vezes
          na mesma tela, abafando os dois selos que importam. O numero de
          confirmados ja esta no alto; aqui so marcamos excecao. */
-      const st=a?(a.status==='confirmado'?'<span class="pill ok">Confirmado</span>':
-        a.status==='recusado'?'<span class="pill bad">Precisa trocar</span>':''):
-        '<span class="pill warn">Vago</span>';
+      const st=a?(a.status==='confirmado'?simbStatus('ok'):a.status==='recusado'?simbStatus('bad'):simbStatus('espera'))
+        :(podeAqui?'<span class="escalar-txt">Escalar</span>':'');
       h+='<div class="slot"'+(podeAqui?' onclick="escolher(\''+ev.id+'\',\''+tid+'\',\''+f.id+'\','+i+')" style="cursor:pointer"':'')+'>'
-        +'<div class="avatar" style="'+(p?'background:'+t.cor+'22;color:'+t.cor:'background:var(--warn-soft);color:var(--warn)')+'">'
-        +(p?esc(ini(p.nome)):'+')+'</div>'
+        +'<div class="avatar'+(p?'':' vaga')+'" style="'+(p?'background:'+t.cor+';color:#fff':'')+'">'
+        +(p?rosto(p):'+')+'</div>'
         +'<div class="grow"><div class="fn">'+esc(f.nome)+'</div>'
-        +'<div class="nm'+(p?'':' vazio')+'">'+(p?esc(p.nome):(podeAqui?'Toque para escalar':'Vago'))+'</div>'
+        +'<div class="nm'+(p?'':' vazio')+'">'+(p?esc(p.nome):'Vago')+'</div>'
         +((p&&verContato&&p.telefone)
-          ?'<div style="font-size:12.5px;color:var(--muted);margin-top:1px">'+esc(p.telefone)+'</div>'
+          ?'<div class="tel">'+esc(p.telefone)+'</div>'
           :'')
         +'</div>'+st
         +((p&&verContato&&temTelefone(p))
-          ?'<button class="btn2 btn-sm" style="width:auto;flex:none;padding:7px 10px;margin-left:2px" '
+          ?'<button class="msg" '
            +'title="Chamar no WhatsApp" aria-label="Chamar '+esc(p.nome)+' no WhatsApp" '
            +'onclick="event.stopPropagation();falarComEscalado(\''+a.id+'\')">'
            +ico('conversa',17)+'</button>'
           :'')
         +'</div>';}});
     h+='</div>';});
-  /* Editar e Excluir vivem no menu "Mais": excluir um culto inteiro nao
-     merece um botao de largura cheia no fim de uma tela que se rola. */
+  /* Incluir ou tirar equipes fica a vista, no fim das equipes do culto;
+     excluir o culto continua so no menu de tres pontos. */
+  if(euPosso('eventos'))
+    h+='<div class="card mais-eq"><div class="row" onclick="editarEvento(\''+ev.id+'\')">'
+     +'<div class="avatar add-eq">'+ico('mais',20)+'</div><div class="grow">'
+     +'<div class="t">'+(ev.teamIds.length?'Adicionar ou tirar equipes':'Adicionar equipes')+'</div>'
+     +'<div class="s">Também muda título, data e horário</div></div><span class="chev">&#8250;</span></div></div>';
   return h;
 }
 /* ---------- ACOES DO CULTO ----------
@@ -1705,7 +2032,7 @@ function escolher(evId,tid,fid,idx){
       ||a.nome.localeCompare(b.nome));
   let h='<p class="sub" style="margin:0 0 12px">'+esc(f.nome)+' &middot; '+fmt(ev.data)+'</p>';
   if(atual){const p=pessoa(atual.pessoaId);
-    h+='<div class="card" style="margin:0 0 14px"><div class="slot"><div class="avatar">'+esc(ini(p.nome))+'</div>'
+    h+='<div class="card" style="margin:0 0 14px"><div class="slot"><div class="avatar">'+rosto(p)+'</div>'
       +'<div class="grow"><div class="fn">Escalado</div><div class="nm">'+esc(p.nome)+'</div></div></div></div>'
       +'<div style="display:flex;gap:8px;margin-bottom:14px">'
       +'<button class="btn-sm" style="flex:1;background:var(--ok)" onclick="marcar(\''+atual.id+'\',\'confirmado\')">Confirmar</button>'
@@ -1728,7 +2055,7 @@ function escolher(evId,tid,fid,idx){
       :'<span class="pill '+(noMes?'mut':'ok')+'">'+noMes+'x no mês</span>';
     h+='<div class="row" data-busca="'+esc(p.nome)+'" '
       +'onclick="definirUI(\''+evId+'\',\''+tid+'\',\''+fid+'\','+idx+',\''+p.id+'\')">'
-      +'<div class="avatar" style="'+(ind?'opacity:.4':'')+'">'+esc(ini(p.nome))+'</div>'
+      +'<div class="avatar" style="'+(ind?'opacity:.4':'')+'">'+rosto(p)+'</div>'
       +'<div class="grow"><div class="t" style="'+(ind?'opacity:.5':'')+'">'+esc(p.nome)+'</div></div>'+tag+'</div>';});
   if(!n)h+='<div class="empty">Ninguém cadastrado nesta função.<br>Adicione em Pessoas.</div>';
   else h+='<div class="empty" id="buscaVazia" style="display:none">Ninguém com esse nome nesta função.</div>';
@@ -1775,8 +2102,11 @@ function formEvento(ev){
     const on=!ev||ev.teamIds.includes(t.id);
     const hr=ev&&ev.teamIds.includes(t.id)?chegada(ev,t.id)
       :menosMin(ev?ev.hora:'19:00',t.antecedencia==null?30:t.antecedencia);
+    const travada=!noMeuEscopo(t.id);
     h+='<div class="tline" data-id="'+t.id+'" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
-     +'<button class="chip'+(on?' on':'')+'" style="flex:1;text-align:left" onclick="toggleEquipe(this)">'+esc(t.nome)+'</button>'
+     +'<button class="chip'+(on?' on':'')+'" style="flex:1;text-align:left'+(travada?';opacity:.55':'')+'"'
+     +(travada?' disabled title="Equipe de outra liderança"':' onclick="toggleEquipe(this)"')+'>'
+     +'<i class="eq-cor" style="background:'+t.cor+'"></i>'+esc(t.nome)+'</button>'
      +'<input type="time" class="thora" value="'+esc(hr)+'" oninput="this.dataset.manual=1" '
      +'style="margin:0;width:118px;flex:none;'+(on?'':'opacity:.35')+'"'+(on?'':' disabled')+'></div>';});
   h+='</div><p style="font-size:13px;color:var(--muted);margin:2px 0 0">Toque no nome para incluir ou tirar a equipe. '
@@ -1817,9 +2147,20 @@ function novoEvento(){
     save();toast('Evento criado');});
 }
 function editarEvento(id){if(!exige('eventos'))return;const ev=evento(id);
-  openSheet('Editar evento',formEvento(ev),()=>{
-    ev.titulo=val('fTit')||ev.titulo;ev.data=val('fData');ev.hora=val('fHora');
-    const{teamIds,chegadas}=lerEquipesEvento();ev.teamIds=teamIds;ev.chegadas=chegadas;save();});
+  openSheet('Editar culto',formEvento(ev),()=>{
+    const{teamIds,chegadas}=lerEquipesEvento();
+    if(!teamIds.length){toast('Escolha ao menos uma equipe');return false;}
+    /* Tirar uma equipe do culto tirava as vagas, mas deixava quem ja estava
+       escalado nela contando como vaga preenchida. Agora a escala dessa
+       equipe sai junto -- e o app pergunta antes. */
+    const saem=ev.teamIds.filter(t=>teamIds.indexOf(t)<0);
+    const perdidas=DB.escalas.filter(a=>a.eventoId===ev.id&&saem.indexOf(a.teamId)>=0);
+    if(perdidas.length&&!confirm('Tirar '+saem.map(t=>(team(t)||{nome:'a equipe'}).nome).join(' e ')
+      +' deste culto remove '+perdidas.length+' pessoa(s) já escalada(s). Continuar?'))return false;
+    ev.titulo=val('fTit')||ev.titulo;ev.data=val('fData')||ev.data;ev.hora=val('fHora')||ev.hora;
+    ev.teamIds=teamIds;ev.chegadas=chegadas;
+    if(perdidas.length)DB.escalas=DB.escalas.filter(a=>perdidas.indexOf(a)<0);
+    save();toast('Culto atualizado');});
 }
 /* primeiro dia da semana pedido que cai NA data escolhida ou depois dela */
 function primeiroDiaDaSemana(baseIso,dow){
@@ -1883,7 +2224,7 @@ function eventosRecorrentes(){
 
 /* ============ ABA: EQUIPES ============ */
 function vEquipes(){
-  let h=hero('Equipes','Ministérios, funções e horários de chegada',
+  let h=hero('Equipes','',
     euPosso('equipes')&&!meuEscopo()?'<button class="add" aria-label="Nova equipe" onclick="novaEquipe()">+</button>':'',
     DB.teams.length?numeros([[DB.teams.length,'equipes'],
       [DB.teams.reduce((n,t)=>n+t.funcoes.length,0),'funções'],
@@ -1932,7 +2273,7 @@ function vEquipe(id){
   h+='<div class="sec-t">Voluntários</div><div class="card">';
   if(!membros.length)h+='<div class="empty">Ninguém nesta equipe ainda.</div>';
   membros.forEach(p=>{h+='<div class="row" onclick="go(\'pessoa\',\''+p.id+'\')">'
-    +'<div class="avatar">'+esc(ini(p.nome))+'</div><div class="grow"><div class="t">'+esc(p.nome)+'</div>'
+    +'<div class="avatar">'+rosto(p)+'</div><div class="grow"><div class="t">'+esc(p.nome)+'</div>'
     +'<div class="s">'+esc(p.funcaoIds.map(fid=>{const f=t.funcoes.find(x=>x.id===fid);return f&&f.nome;}).filter(Boolean).join(', ')||'sem função')+'</div></div>'
     +'<span class="chev">&#8250;</span></div>';});
   h+='</div><div class="gap"></div><div class="pad">'
@@ -2020,7 +2361,7 @@ function vPessoas(){
     const cor=c===0?'warn':(c>=corte?'bad':'mut');
     h+='<div class="row" onclick="go(\'pessoa\',\''+p.id+'\')">'
      +'<div class="avatar"'+(temPainel(p)?' style="background:var(--brand-soft);color:var(--brand)"':'')+'>'
-     +esc(ini(p.nome))+'</div>'
+     +rosto(p)+'</div>'
      +'<div class="grow"><div class="t">'+esc(p.nome)
      +(temPainel(p)?' <span class="pill" style="font-size:10px;padding:2px 7px">líder</span>':'')+'</div>'
      +'<div class="s">'+eqs.map(x=>'<span class="eqdot" style="background:'+x.cor+'"></span>').join('')
@@ -2040,6 +2381,7 @@ function vPessoa(id){
     .filter(x=>x.e&&x.e.data>=hojeIso()).sort((x,y)=>x.e.data.localeCompare(y.e.data));
   h+='<p class="sub">'+esc(p.telefone||'sem telefone')+' &middot; '+carga(p.id)+' escalas '
    +rotuloTotal()+'</p>';
+  h+=cartaoFoto(p);
   const completo=p.email&&p.nascimento;
   h+='<div class="pad"><div class="card" style="margin:0 0 12px;padding:14px 16px">'
    +'<div style="display:flex;align-items:center;gap:12px">'
@@ -2155,7 +2497,7 @@ function verConflitos(){
     const e=evento(a.eventoId), p=pessoa(a.pessoaId), f=funcao(a.teamId,a.funcaoId);
     const au=ausenciaEm(p.id,e.data);
     h+='<div class="row" onclick="closeSheet();go(\'evento\',\''+e.id+'\')">'
-     +'<div class="avatar" style="background:var(--warn-soft);color:var(--warn)">'+esc(ini(p.nome))+'</div>'
+     +'<div class="avatar" style="background:var(--warn-soft);color:var(--warn)">'+rosto(p)+'</div>'
      +'<div class="grow"><div class="t">'+esc(p.nome)+'</div>'
      +'<div class="s">'+esc(f?f.nome:'')+' &middot; '+esc(e.titulo)+' &middot; '+fmt(e.data)+'</div>'
      +'<div class="s" style="color:var(--warn);font-weight:600">'
@@ -2271,12 +2613,13 @@ function apagarPessoa(id){if(!exigePessoa('pessoas',pessoa(id)))return;if(!confi
 /* ============ ABA: PERFIL ============ */
 function vPerfil(){
   const p=eu();
-  let h=hero('Perfil','Ajustes do app e da equipe','',
+  let h=hero('Perfil','','',
     numeros([[DB.pessoas.length,'pessoas'],[futuros().length,'cultos'],
       [trocasAbertas().length,'trocas abertas']]));
   h+=blocoAvisos([bannerConexao(),bannerNuvem()]);
+  if(p)h+=cartaoFoto(p);
   if(p)h+='<div class="card"><div class="row" style="cursor:default">'
-   +'<div class="avatar">'+esc(ini(p.nome))+'</div><div class="grow">'
+   +'<div class="avatar">'+rosto(p)+'</div><div class="grow">'
    +'<div class="t">'+esc(p.nome)+' <span class="pill">'+(ehAdmin(p)?'admin':'líder')+'</span></div>'
    +'<div class="s">'+esc(p.email||'sem e-mail')+'</div></div></div>'
    +'<div class="row" onclick="editarMeusDados()"><div class="grow"><div class="t">Editar meus dados</div></div>'
@@ -2382,13 +2725,13 @@ function verPermissoes(){
    +'e vê apenas a própria escala.</p><div class="card" style="margin:0">';
   if(!com.length)h+='<div class="empty">Ninguém com permissão de edição.</div>';
   com.forEach(p=>{const ks=Object.keys(PERMS).filter(k=>p.perms[k]);
-    h+='<div class="row" onclick="editarPerms(\''+p.id+'\')"><div class="avatar">'+esc(ini(p.nome))+'</div>'
+    h+='<div class="row" onclick="editarPerms(\''+p.id+'\')"><div class="avatar">'+rosto(p)+'</div>'
      +'<div class="grow"><div class="t">'+esc(p.nome)+'</div>'
      +'<div class="s">'+(escopoDe(p)?'<b>'+esc(nomesEscopo(escopoDe(p)))+'</b> &middot; ':'')
      +esc(ks.map(k=>PERMS[k]).join(', '))+'</div></div><span class="chev">&#8250;</span></div>';});
   h+='</div><div class="gap"></div><div class="sec-t" style="margin-left:0">Voluntários</div><div class="card" style="margin:0">';
   DB.pessoas.filter(p=>!temPainel(p)).forEach(p=>{
-    h+='<div class="row" onclick="editarPerms(\''+p.id+'\')"><div class="avatar">'+esc(ini(p.nome))+'</div>'
+    h+='<div class="row" onclick="editarPerms(\''+p.id+'\')"><div class="avatar">'+rosto(p)+'</div>'
      +'<div class="grow"><div class="t">'+esc(p.nome)+'</div><div class="s">só a própria escala</div></div>'
      +'<span class="chev">&#8250;</span></div>';});
   openSheet('Quem pode editar',h+'</div>',null);
@@ -2423,7 +2766,7 @@ function relatorio(){
   ord.forEach(p=>{const c=mes[p.id];
     /* quem está mais de uma escala acima da média é o sinal de sobrecarga */
     const pesado=ord.length>1&&c>=media+1&&c===max;
-    h+='<div class="row" style="cursor:default"><div class="avatar">'+esc(ini(p.nome))+'</div>'
+    h+='<div class="row" style="cursor:default"><div class="avatar">'+rosto(p)+'</div>'
      +'<div class="grow"><div class="t">'+esc(p.nome)
      +(pesado?' <span class="pill bad" style="font-size:10px;padding:2px 7px">mais carregada</span>':'')
      +'</div>'
@@ -2968,6 +3311,7 @@ function achatar(db){
     const lin={id:p.id,igreja_id:ig,nome:p.nome,telefone:p.telefone||null,
       email:p.email||null,nascimento:p.nascimento||null,codigo:p.codigo};
     if(mandaPerms)lin.perms=p.perms||{};
+    if(FOTO_NUVEM)lin.foto=p.foto||null;
     perfis.push(lin);
     (p.funcaoIds||[]).forEach(fid=>habilidades.push({perfil_id:p.id,funcao_id:fid}));
   });
@@ -3008,10 +3352,14 @@ function montar(dados){
   (dados.habilidades||[]).forEach(h=>{(habs[h.perfil_id]=habs[h.perfil_id]||[]).push(h.funcao_id);});
   const equipeDaFuncao={};
   (dados.funcoes||[]).forEach(f=>equipeDaFuncao[f.id]=f.equipe_id);
+  /* A foto so passa a ser enviada depois que o banco tem a coluna (rodar
+     migracao-foto-perfil.sql). Enviar antes derrubaria a gravacao inteira,
+     como ja aconteceu com o status "expirada". */
+  FOTO_NUVEM=(dados.perfis||[]).some(r=>r&&Object.prototype.hasOwnProperty.call(r,'foto'));
   d.pessoas=(dados.perfis||[]).map(p=>{
     const fids=habs[p.id]||[];
     return{id:p.id,nome:p.nome,telefone:p.telefone||'',email:p.email||'',
-      nascimento:p.nascimento||'',codigo:p.codigo,perms:p.perms||{},
+      nascimento:p.nascimento||'',codigo:p.codigo,perms:p.perms||{},foto:p.foto||'',
       entrou:p.entrou_em||null,funcaoIds:fids,
       /* quem manda na validade do codigo e o banco: o app so mostra */
       codigoExpira:p.codigo_expira_em||null,codigoUsos:p.codigo_usos||0,
@@ -3287,6 +3635,7 @@ async function diagnosticoNuvem(){
       ['eventos','alerta_buraco','migracao-alerta-buracos.sql'],
       ['eventos','obs','migracao-info-culto.sql'],
       ['perfis','codigo_expira_em','migracao-codigos-acesso.sql'],
+      ['perfis','foto','migracao-foto-perfil.sql'],
       ['escalas','avisos','push-1-banco.sql']]){
       const{error}=await SB.from(tab).select(col,{count:'exact',head:true});
       if(error)extras.push({obj:tab+'.'+col,arquivo,ok:false,msg:error.message});
@@ -4525,7 +4874,7 @@ function configPush(){
    +'<div class="card" style="margin:0">';
   if(!com.length)h+='<div class="empty">Ninguém ativou ainda.</div>';
   DB.pessoas.forEach(p=>{const on=ativo(p);
-    h+='<div class="row" style="cursor:default"><div class="avatar">'+esc(ini(p.nome))+'</div>'
+    h+='<div class="row" style="cursor:default"><div class="avatar">'+rosto(p)+'</div>'
      +'<div class="grow"><div class="t">'+esc(p.nome)+'</div>'
      +'<div class="s">'+(on?esc(detalhe(p)):'não ativou')+'</div></div>'
      +'<span class="pill '+(on?'ok':'mut')+'">'+(on?'on':'off')+'</span></div>';});
@@ -4622,7 +4971,7 @@ function avisarEvento(evId,tipo){
   lista.forEach(a=>{const p=pessoa(a.pessoaId), f=funcao(a.teamId,a.funcaoId), ok=jaAvisado(a,tipo);
     const tel=temTelefone(p);
     h+='<div class="row"'+(tel?' onclick="abrirWhats(escalaPorId(\''+a.id+'\'),\''+tipo+'\')"':' style="cursor:default;opacity:.5"')+'>'
-     +'<div class="avatar">'+esc(ini(p.nome))+'</div>'
+     +'<div class="avatar">'+rosto(p)+'</div>'
      +'<div class="grow"><div class="t">'+esc(p.nome)+'</div>'
      +'<div class="s">'+esc(f?f.nome:'')+(tel?'':' &middot; sem telefone')+'</div></div>'
      +(tel?'<span class="pill '+(ok?'ok':'')+'">'+(ok?'enviado':'enviar')+'</span>':'')+'</div>';});
@@ -4656,7 +5005,7 @@ function vLembretes(){
       ok=jaAvisado(a,m.chave), tel=temTelefone(p), push=!!(p.push&&p.push.endpoint);
       const podeWa=tel&&(c.canal==='whatsapp'||c.canal==='ambos'||c.canal==='push');
       h+='<div class="row"'+(podeWa?' onclick="avisarUm(\''+a.id+'\',\''+m.chave+'\')"':' style="cursor:default;opacity:.5"')+'>'
-       +'<div class="avatar">'+esc(ini(p.nome))+'</div>'
+       +'<div class="avatar">'+rosto(p)+'</div>'
        +'<div class="grow"><div class="t">'+esc(p.nome)+'</div>'
        +'<div class="s">'+esc(f?f.nome:'')+' &middot; chegar '+esc(chegada(ev,a.teamId))
        +(push?' &middot; &#128276;':'')+(tel?'':' &middot; sem telefone')+'</div></div>'
@@ -4721,7 +5070,7 @@ function vLogin(){
   /* Ja entrou neste aparelho: volta com um toque, sem codigo. */
   if(ult&&!MOSTRA_CODIGO){
     return '<div style="padding:56px 24px 0;text-align:center">'
-     +'<div class="avatar" style="width:76px;height:76px;font-size:27px;margin:0 auto 16px">'+esc(ini(ult.nome))+'</div>'
+     +'<div class="avatar" style="width:76px;height:76px;font-size:27px;margin:0 auto 16px">'+rosto(ult)+'</div>'
      +'<h1 style="margin:0 0 4px">Olá, '+esc(ult.nome.split(' ')[0])+'</h1>'
      +'<p class="sub" style="margin:0 0 26px;padding:0">Este aparelho já está vinculado ao seu cadastro.</p>'
      +'<button onclick="entrarComo(\''+esc(ult.codigo)+'\')">Continuar como '+esc(ult.nome.split(' ')[0])+'</button>'
@@ -4913,69 +5262,73 @@ function minhasEscalas(pid){
 }
 function vMinha(){
   const p=pessoa(DB.sessao); const lista=minhasEscalas(p.id);
-  const pend=lista.filter(x=>x.a.status==='pendente').length;
-  const confirmadas=lista.filter(x=>x.a.status==='confirmado').length;
-  /* o topo responde a pergunta com que a pessoa abre o app: quando eu sirvo */
-  const prox=lista[0];
-  const sub=prox?'Próxima escala: <b>'+fmtLong(prox.e.data)+'</b>, chegue às <b>'
-      +esc(chegada(prox.e,prox.a.teamId))+'</b>':'Nenhuma escala marcada para você agora';
-  let h=hero('Olá, '+esc(p.nome.split(' ')[0]),sub,
-    '<button class="add" style="position:relative" aria-label="Avisos" onclick="go(\'avisos\')">'
-    +(naoLidos()?'<span class="bdg" style="top:-3px;left:auto;right:-3px;margin:0">'+naoLidos()+'</span>':'')
-    +ico('sino',21)+'</button>',
-    '');
+  let h=hero('Minha escala','',
+    '<button class="add" aria-label="Avisos" onclick="go(\'avisos\')">'
+    +(naoLidos()?'<span class="bdg">'+naoLidos()+'</span>':'')+ico('sino',21)+'</button>','',
+    fmtLong(hojeIso()));
   h+=blocoAvisos([bannerConexao(),bannerNuvem(),bannerInstalar()]);
-  const paraMim=trocasParaMim();
-  if(paraMim.length)h+='<div class="warnbox" style="background:var(--brand-soft);color:var(--brand);cursor:pointer" '
-    +'onclick="tab(\'trocas\')">'+paraMim.length+' pedido(s) de troca esperando você &rsaquo;</div>';
   if(!lista.length)h+='<div class="empty"><b>Nada por enquanto</b>'
     +'Você não está escalado em nenhum culto. Mantenha a sua Agenda em dia para o líder saber quando pode contar com você.</div>';
-  lista.forEach(x=>{const f=funcao(x.a.teamId,x.a.funcaoId), t=team(x.a.teamId), ch=chegada(x.e,x.a.teamId);
-    h+='<div class="card mcard '+x.a.status+'">'
-     +'<div style="padding:14px 16px 10px;cursor:pointer" onclick="go(\'evento\',\''+x.e.id+'\')">'
-     +'<div style="display:flex;justify-content:space-between;align-items:baseline">'
-     +'<b style="font-size:17px">'+esc(x.e.titulo)+'</b>'
-     +(x.a.status==='confirmado'?'<span class="pill ok">Confirmado</span>':
-       x.a.status==='recusado'?'<span class="pill bad">Troque esta data</span>':'<span class="pill warn">Responder</span>')+'</div>'
-     +'<div style="color:var(--muted);font-size:14px;margin-top:2px">'+fmtLong(x.e.data)+'</div>'
-     +'<div style="display:flex;gap:8px;margin-top:12px">'
-     +'<div class="hbox"><div class="fn">Sua chegada</div><b style="color:var(--brand)">'+esc(ch)+'</b></div>'
-     +'<div class="hbox"><div class="fn">Início do culto</div><b>'+esc(x.e.hora)+'</b></div></div>'
-     +'<div style="margin-top:11px;font-size:15px">'
-     +'<span class="pill" style="background:'+(t?t.cor:'#888')+'1f;color:'+(t?t.cor:'#888')+'">'+esc(t?t.nome:'')+'</span>'
-     +' <b style="margin-left:6px">'+esc(f?f.nome:'')+'</b></div>'
-     +(temInfo(x.e)?'<div style="margin-top:11px;font-size:14px;font-weight:600;'
-       +'color:var(--brand)">'+ico('info',15)+' Este culto tem informações</div>':'')
-     +'<div style="font-size:13px;color:var(--muted);margin-top:9px">'
-     +'Toque para ver quem mais serve neste culto &rsaquo;</div></div>'
-     +'<div style="display:flex;gap:8px;padding:0 16px 14px">'
-     +'<button class="btn-sm" style="flex:1;background:'+(x.a.status==='confirmado'?'var(--ok)':'var(--brand)')+'" '
-     +'onclick="respondo(\''+x.a.id+'\',\'confirmado\')">'+(x.a.status==='confirmado'?'Confirmado &#10003;':'Confirmar presença')+'</button>'
-     +(trocaDaEscala(x.a.id)
-       ?'<button class="btn2 btn-sm" style="flex:1;color:var(--warn);border-color:var(--warn)" onclick="tab(\'trocas\')">Troca pedida</button>'
-       :'<button class="btn2 btn-sm" style="flex:1" onclick="pedirTrocaUI(\''+x.a.id+'\')">Pedir troca</button>')
-     /* só o ícone: a linha já está cheia, e o rótulo aparece na folha que abre */
-     +'<button class="btn2 btn-sm" aria-label="Adicionar à minha agenda" '
-     +'title="Adicionar à minha agenda" onclick="adicionarNaAgenda(\''+x.a.id+'\')">'
-     +ico('calendario',17)+'</button>'
-     +'</div></div>';});
+  else{
+    /* A proxima escala em destaque, como um convite: o que e, o que voce faz
+       e a hora de chegar, com as duas acoes que importam. */
+    const x=lista[0], f=funcao(x.a.teamId,x.a.funcaoId), t=team(x.a.teamId), ch=chegada(x.e,x.a.teamId);
+    const q=diasAte(x.e.data), st=x.a.status, pediu=trocaDaEscala(x.a.id);
+    const quando=q===0?'Hoje':q===1?'Amanhã':fmtLong(x.e.data);
+    h+='<div class="prox">'
+     +'<svg class="prox-grade" viewBox="93 93 326 326" aria-hidden="true"><rect x="93" y="93" width="150" height="150" rx="38"/>'
+     +'<rect x="269" y="93" width="150" height="150" rx="38"/><rect x="93" y="269" width="150" height="150" rx="38"/>'
+     +'<rect x="269" y="269" width="150" height="150" rx="38" class="cheia"/></svg>'
+     +'<div class="prox-toque" onclick="go(\'evento\',\''+x.e.id+'\')">'
+     +'<div class="prox-quando">'+quando+(temInfo(x.e)?' '+ico('info',15):'')+'</div>'
+     +'<h2>'+esc(x.e.titulo)+'</h2>'
+     +'<div class="prox-papel">'+esc(f?f.nome:'')+(t?', na equipe de '+esc(t.nome):'')+'</div>'
+     +(st==='recusado'?'<div class="prox-alerta">'+ico('alerta',15)+' Você precisa trocar esta data</div>':'')
+     +'<div class="prox-horas"><div><small>Chegue às</small><b>'+esc(ch)+'</b></div>'
+     +'<div class="sec"><small>Começa às</small><b>'+esc(x.e.hora)+'</b></div></div></div>'
+     +'<div class="capsulas">'
+     +(st==='confirmado'
+       ?'<button class="cap branca" onclick="go(\'evento\',\''+x.e.id+'\')">'+ico('check',18)+'Confirmado</button>'
+       :'<button class="cap branca" onclick="respondo(\''+x.a.id+'\',\'confirmado\')">Confirmar</button>')
+     +(pediu?'<button class="cap vidro-claro" onclick="tab(\'trocas\')">Troca pedida</button>'
+            :'<button class="cap vidro-claro" onclick="pedirTrocaUI(\''+x.a.id+'\')">Trocar</button>')
+     +'<button class="cap vidro-claro redondo" aria-label="Adicionar à minha agenda" '
+     +'onclick="adicionarNaAgenda(\''+x.a.id+'\')">'+ico('calendario',20)+'</button>'
+     +'</div></div>';
 
-  /* A escala inteira, aberta para todos. Saber quem serve em cada culto é o
-     que permite combinar uma troca direto com a pessoa, em vez de jogar o
-     pedido no mural e torcer. */
+    if(lista.length>1){
+      h+='<div class="sec-t">Depois</div><div class="card">';
+      lista.slice(1).forEach(y=>{const fy=funcao(y.a.teamId,y.a.funcaoId), ty=team(y.a.teamId);
+        const d=pd(y.e.data), sy=y.a.status;
+        h+='<div class="row" onclick="go(\'evento\',\''+y.e.id+'\')">'
+         +'<div class="dchip"><b>'+d.getDate()+'</b><span>'+DOW[d.getDay()]+'</span></div>'
+         +'<div class="grow"><div class="t">'+esc(y.e.titulo)+'</div>'
+         +'<div class="s">Chegar às '+esc(chegada(y.e,y.a.teamId))+', '+esc(fy?fy.nome:'')+'</div></div>'
+         +'<div class="dir">'
+         +(sy==='confirmado'?simbStatus('ok'):sy==='recusado'?simbStatus('bad')
+           :'<button class="cap-mini" onclick="event.stopPropagation();respondo(\''+y.a.id+'\',\'confirmado\')">Confirmar</button>')
+         +'</div></div>';});
+      h+='</div>';
+    }
+  }
+  const paraMim=trocasParaMim();
+  if(paraMim.length)
+    h+='<div class="sec-t">Trocas para você</div><div class="card"><div class="row" onclick="tab(\'trocas\')">'
+     +'<div class="avatar">'+ico('troca',18)+'</div><div class="grow"><div class="t">'
+     +(paraMim.length===1?'1 pedido de troca':paraMim.length+' pedidos de troca')+'</div>'
+     +'<div class="s">Alguém precisa que você cubra uma vaga</div></div><span class="chev">&#8250;</span></div></div>';
+
+  /* A escala inteira, aberta para todos: saber quem serve em cada culto e o
+     que permite combinar uma troca direto com a pessoa. */
   const outros=futuros().filter(e=>!lista.some(x=>x.e.id===e.id)).slice(0,12);
   if(outros.length){
     h+='<div class="sec-t">Próximos cultos da equipe</div><div class="card">';
-    outros.forEach(e=>{const s=statusEvento(e);
-      const eqs=e.teamIds.map(t=>{const x=team(t);return x&&x.nome;}).filter(Boolean).join(' · ');
-      const d=pd(e.data);
+    outros.forEach(e=>{const s=statusEvento(e), d=pd(e.data);
       h+='<div class="row" onclick="go(\'evento\',\''+e.id+'\')">'
        +'<div class="dchip"><b>'+d.getDate()+'</b><span>'+DOW[d.getDay()]+'</span></div>'
-       +'<div class="grow"><div class="t">'+esc(e.titulo)+'</div>'
-       +'<div class="s">'+MES[d.getMonth()]+' &middot; '+esc(e.hora)+'</div>'+faixaVagas(s)+'</div>'
-       +'<span class="chev">&#8250;</span></div>';});
-    h+='</div><p class="sub" style="font-size:12.5px">Toque num culto para ver a escala completa &mdash; '
-     +'todas as equipes e quem está em cada função.</p>';
+       +'<div class="grow"><div class="t">'+esc(e.titulo)+'</div><div class="s">'+esc(e.hora)+'</div></div>'
+       +faixaVagas(s)+'<span class="chev">&#8250;</span></div>';});
+    h+='</div>';
   }
   return h;
 }
@@ -5115,7 +5468,7 @@ function vTrocas(){
     if(!todas.length)h+='<div class="empty">Nenhuma troca pendente na equipe.</div>';
     todas.forEach(t=>{const a=escalaPorId(t.escalaId),ev=evento(a.eventoId),f=funcao(a.teamId,a.funcaoId);
       const n=candidatosTroca(t).length;
-      h+='<div class="row" onclick="go(\'evento\',\''+ev.id+'\')"><div class="avatar">'+esc(ini(pessoa(t.deId).nome))+'</div>'
+      h+='<div class="row" onclick="go(\'evento\',\''+ev.id+'\')"><div class="avatar">'+rosto(pessoa(t.deId))+'</div>'
        +'<div class="grow"><div class="t">'+esc(pessoa(t.deId).nome)+' &rarr; '+(t.paraId?esc(pessoa(t.paraId).nome):'mural')+'</div>'
        +'<div class="s">'+esc(f.nome)+' &middot; '+fmt(ev.data)+' &middot; '+n+' podem assumir</div></div>'
        +'<span class="pill '+(n?'warn':'bad')+'">'+(n?'aguardando':'sem gente')+'</span></div>';});
@@ -5170,7 +5523,7 @@ function pedirTrocaUI(escalaId){
   aptos.forEach(p=>{
     const prox=minhasEscalas(p.id)[0];
     h+='<div class="row" onclick="enviarTroca(\''+escalaId+'\',\''+p.id+'\')">'
-    +'<div class="avatar">'+esc(ini(p.nome))+'</div><div class="grow"><div class="t">'+esc(p.nome)+'</div>'
+    +'<div class="avatar">'+rosto(p)+'</div><div class="grow"><div class="t">'+esc(p.nome)+'</div>'
     +'<div class="s">'+cargaJanela(p.id)+' nos últimos 90 dias &middot; '
     +(prox?'próxima em '+fmt(prox.e.data):'sem escala marcada')
     +'</div></div><span class="chev">&#8250;</span></div>';});
@@ -5284,14 +5637,57 @@ function vAvisos(){
 }
 function lerAvisosDepois(){setTimeout(()=>{lerAvisos();
   const n=document.getElementById('nav');if(n)render();},2500);}
+/* ---------- FOTO DE PERFIL ----------
+   A foto e reduzida no proprio aparelho para 128 x 128, recortada no centro,
+   em JPEG: fica com uns 6 KB e viaja junto com o cadastro, sem servico de
+   arquivos a mais. O iPhone ja converte HEIC para JPEG ao escolher. */
+var FOTO_NUVEM=false;
+const podeFoto=()=>!naNuvemFn()||FOTO_NUVEM;
+function naNuvemFn(){try{return typeof naNuvem==='function'&&naNuvem();}catch(e){return false;}}
+function podeMexerNaFoto(p){return !!p&&(p.id===DB.sessao||euPossoPessoa('pessoas',p));}
+function reduzirFoto(file){
+  return new Promise((ok,erro)=>{
+    const url=URL.createObjectURL(file), img=new Image();
+    img.onload=()=>{
+      const L=128, c=document.createElement('canvas'); c.width=c.height=L;
+      const m=Math.min(img.naturalWidth,img.naturalHeight);
+      c.getContext('2d').drawImage(img,(img.naturalWidth-m)/2,(img.naturalHeight-m)/2,m,m,0,0,L,L);
+      URL.revokeObjectURL(url); ok(c.toDataURL('image/jpeg',.8));};
+    img.onerror=()=>{URL.revokeObjectURL(url);erro(new Error('Não consegui abrir essa imagem'));};
+    img.src=url;});
+}
+function escolherFoto(pid){
+  const p=pessoa(pid); if(!podeMexerNaFoto(p))return toast('Você não pode mudar essa foto');
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+  inp.onchange=async()=>{const f=inp.files&&inp.files[0]; if(!f)return;
+    try{p.foto=await reduzirFoto(f); save(); render(); toast('Foto atualizada');}
+    catch(e){toast(e.message||'Não consegui usar essa imagem');}};
+  inp.click();
+}
+function removerFoto(pid){
+  const p=pessoa(pid); if(!podeMexerNaFoto(p))return;
+  p.foto=''; save(); render(); toast('Foto removida');
+}
+/* bloco da foto, como no cartao de contato do iPhone */
+function cartaoFoto(p){
+  if(!p)return '';
+  const pode=podeMexerNaFoto(p)&&podeFoto();
+  if(!pode&&!p.foto)return '';
+  return '<div class="foto-bloco"><div class="avatar foto-grande">'+rosto(p)+'</div>'
+   +(pode?'<div class="foto-acoes"><button class="b-link" onclick="escolherFoto(\''+p.id+'\')">'
+     +(p.foto?'Alterar foto':'Adicionar foto')+'</button>'
+     +(p.foto?'<button class="b-link vermelho" onclick="removerFoto(\''+p.id+'\')">Remover</button>':'')+'</div>':'')
+   +'</div>';
+}
 function vConta(){
   const p=pessoa(DB.sessao);
   const ts=p.teamIds.map(t=>{const x=team(t);return x&&x.nome;}).filter(Boolean).join(', ');
-  let h=hero('Conta','Seus dados e avisos','',
+  let h=hero('Conta','','',
     numeros([[carga(p.id),'escalas'],[minhasEscalas(p.id).length,'próximas'],
       [naoLidos(),'avisos novos']]));
+  h+=cartaoFoto(p);
   h+='<div class="card">'
-   +'<div class="row" style="cursor:default"><div class="avatar">'+esc(ini(p.nome))+'</div>'
+   +'<div class="row" style="cursor:default"><div class="avatar">'+rosto(p)+'</div>'
    +'<div class="grow"><div class="t">'+esc(p.nome)+'</div><div class="s">'+esc(ts||'sem equipe')+'</div></div></div>'
    +linhaDado('E-mail',p.email)+linhaDado('Telefone',p.telefone||'não informado')
    +linhaDado('Nascimento',p.nascimento?fmtLong(p.nascimento)+' ('+idade(p.nascimento)+')':'não informado')
@@ -5433,7 +5829,7 @@ function listaConvites(){
    +'ou desconectar aparelhos.</p><div class="card" style="margin:0">';
   if(!DB.pessoas.length)h+='<div class="empty">Nenhum voluntário cadastrado.</div>';
   DB.pessoas.forEach(p=>{const ok=p.email&&p.nascimento; const v=validadeCodigo(p);
-    h+='<div class="row" onclick="telaAcesso(\''+p.id+'\')"><div class="avatar">'+esc(ini(p.nome))+'</div>'
+    h+='<div class="row" onclick="telaAcesso(\''+p.id+'\')"><div class="avatar">'+rosto(p)+'</div>'
      +'<div class="grow"><div class="t">'+esc(p.nome)+(temPainel(p)?' <span class="pill">líder</span>':'')+'</div>'
      +'<div class="s">'+(ok?'cadastro completo':(p.entrou?'entrou, falta completar':'ainda não entrou'))
      +((p.push&&(p.push.endpoint||p.push.local))?' &middot; &#128276;':'')+'</div>'

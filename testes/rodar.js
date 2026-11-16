@@ -662,6 +662,27 @@ teste('a contagem do líder de equipe considera só as vagas dele', () => {
   igual(app.pessoasNoEscopo().map(p => p.nome).sort(), ['Caio', 'Duda']);
 });
 
+/* ---------- foto de perfil ---------- */
+const FOTO = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==';
+
+teste('a foto só entra no avatar se for imagem em base64', () => {
+  ok(app.rosto({ nome: 'Ana Souza', foto: FOTO }).indexOf('<img') === 0, 'foto válida vira imagem');
+  igual(app.rosto({ nome: 'Ana Souza', foto: 'https://exemplo.com/x.jpg' }), 'AS', 'URL externa não entra');
+  igual(app.rosto({ nome: 'Ana Souza', foto: 'data:image/png;base64,x" onerror="alert(1)' }), 'AS', 'nada de HTML');
+  igual(app.rosto({ nome: 'Ana Souza' }), 'AS');
+});
+
+teste('a foto não sobe enquanto o banco não tem a coluna, e sobe depois', () => {
+  const db = usar(mundo());
+  db.pessoas[0].foto = FOTO;
+  const sem = app.achatar(db);
+  app.montar({ perfis: sem.perfis });                       // banco antigo: linhas sem "foto"
+  ok(!('foto' in app.achatar(db).perfis[0]), 'sem a coluna, a foto não pode ir');
+  app.montar({ perfis: sem.perfis.map(r => Object.assign({ foto: null }, r)) });  // depois da migração
+  igual(app.achatar(db).perfis.find(r => r.id === ANA).foto, FOTO);
+  app.montar({ perfis: [] });
+});
+
 /* ---------- execução ---------- */
 for (const [nome, fn] of casos) {
   try { fn(); passou++; console.log('  ok   ' + nome); }
