@@ -618,6 +618,10 @@ body .chip.on{background:var(--brand);color:#fff}
 .prox-horas b{display:block;font-size:44px;font-weight:600;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums}
 .prox-horas .sec b{font-size:28px;opacity:.85;margin-top:10px}
 .capsulas{display:flex;gap:10px;position:relative}
+.pres{font-size:14px;font-weight:600;color:var(--tint,#007AFF);display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.pres.ok{color:var(--ok)}
+.chegou{font-size:13px;color:var(--ok);font-weight:600;margin-top:2px}
+body .slot .chegou{order:-1}
 .capsulas .cap{flex:1}
 body button.cap.branca{background:#fff;color:#0062D6}
 body button.cap.vidro-claro{background:rgba(255,255,255,.2);color:#fff;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.35)}
@@ -1778,7 +1782,10 @@ function vEvento(id){
      mesmo, sem ter de voltar e procurar na lista */
   const minhaAqui=DB.escalas.find(a=>a.eventoId===ev.id&&a.pessoaId===DB.sessao);
   let trocaHtml='';
-  if(minhaAqui&&ev.data>=hojeIso()){
+  if(minhaAqui&&checkinAberto(minhaAqui)){
+    trocaHtml='<div class="pad" style="margin-bottom:6px"><button style="width:100%" '
+     +'onclick="cheguei(\''+minhaAqui.id+'\')">Cheguei</button></div>';
+  }else if(minhaAqui&&!minhaAqui.chegou&&ev.data>=hojeIso()){
     const jaPediu=trocaDaEscala(minhaAqui.id);
     trocaHtml='<div class="pad" style="margin-bottom:6px">'
      +(jaPediu
@@ -1815,7 +1822,8 @@ function vEvento(id){
         +(p?rosto(p):'+')+'</div>'
         +'<div class="grow"><div class="fn">'+esc(f.nome)+'</div>'
         +'<div class="nm'+(p?'':' vazio')+'">'+(p?esc(p.nome):'Vago')+'</div>'
-        +((p&&verContato&&p.telefone)
+        +((p&&a.chegou)?'<div class="chegou">Chegou às '+horaCurta(a.chegou)+'</div>'
+          :(p&&verContato&&p.telefone)
           ?'<div class="tel">'+esc(p.telefone)+'</div>'
           :'')
         +'</div>'+st
@@ -1850,6 +1858,13 @@ function acoesEvento(ev,s){
     const faltam=se.preenchidos-se.confirmados;
     a.push([faltam>0?'Notificar quem não confirmou ('+faltam+')':'Notificar a equipe deste culto',
       "cobrarEvento('"+ev.id+"')"]);
+  }
+  /* no dia e na semana seguinte, a lista de presenca; no dia, ela e o botao principal */
+  const dd=diasAte(ev.data);
+  if(euPosso('escalas')&&presencaPronta()&&dd<=0&&dd>=-7&&se.preenchidos){
+    const ch=DB.escalas.filter(x=>x.eventoId===ev.id&&x.pessoaId&&x.chegou&&noMeuEscopo(x.teamId)).length;
+    const item=['Presença ('+ch+' de '+se.preenchidos+')',"presencaEvento('"+ev.id+"')"];
+    if(dd===0)a.unshift(item); else a.push(item);
   }
   a.push(['Compartilhar',"compartilhar('"+ev.id+"')"]);
   if(euPosso('escalas')&&usaWhats())
@@ -2417,6 +2432,12 @@ function vPessoa(id){
   h+='<p class="sub">'+esc(p.telefone||'sem telefone')+' &middot; '+carga(p.id)+' escalas '
    +rotuloTotal()+'</p>';
   h+=cartaoFoto(p);
+  const pres=presencaDe(p.id);
+  if(pres&&pres.total)h+='<div class="sec-t">Presença</div><div class="card">'
+   +linhaDado('Chegou e marcou presença',pres.veio+' de '+pres.total+' cultos ('
+     +Math.round(pres.veio/pres.total*100)+'%)')
+   +'<div class="row" style="cursor:default"><div class="grow"><div class="s">Contando desde '
+   +fmt(pres.desde)+', quando a presença começou a ser marcada.</div></div></div></div>';
   const completo=p.email&&p.nascimento;
   h+='<div class="pad"><div class="card" style="margin:0 0 12px;padding:14px 16px">'
    +'<div style="display:flex;align-items:center;gap:12px">'
@@ -2872,6 +2893,17 @@ function cobrarEvento(evId){
    +linhaDado('Já confirmaram',String(lista.length-pend.length))
    +linhaDado('Sem responder',String(pend.length))
    +'</div>';
+  /* cada um que falta, com o WhatsApp a um toque */
+  if(pend.length){
+    h+='<div class="sec-t" style="margin-left:0">Ainda não confirmaram</div><div class="card" style="margin:0 0 12px">';
+    pend.forEach(a=>{const p=pessoa(a.pessoaId), f=funcao(a.teamId,a.funcaoId); if(!p)return;
+      h+='<div class="row" style="cursor:default"><div class="avatar">'+rosto(p)+'</div>'
+       +'<div class="grow"><div class="t">'+esc(p.nome)+'</div><div class="s">'+esc(f?f.nome:'')
+       +(recebePush(p.id)?'':' · sem notificação')+'</div></div>'
+       +(temTelefone(p)?'<button class="msg" aria-label="Cobrar '+esc(p.nome)+' no WhatsApp" '
+         +'onclick="cobrarNoWhats(\''+a.id+'\')">'+ico('conversa',17)+'</button>':'')+'</div>';});
+    h+='</div>';
+  }
   if(!pend.length)h+='<div class="okbox" style="margin:0 0 12px">'
    +'Todo mundo já confirmou este culto.</div>';
   /* dizer isto antes evita a conclusão errada de que a notificação falhou */
@@ -2892,6 +2924,14 @@ function cobrarEvento(evId){
   openSheet('Notificar a equipe',h,null);
 }
 
+function cobrarNoWhats(aid){
+  const a=escalaPorId(aid); if(!a)return;
+  const p=pessoa(a.pessoaId), ev=evento(a.eventoId), f=funcao(a.teamId,a.funcaoId);
+  if(!p||!ev||!temTelefone(p))return;
+  abrirWhatsUrl(telE164(p.telefone),'Oi, '+p.nome.split(' ')[0]+'! Você está escalado em '
+   +(f?f.nome:'')+' no '+ev.titulo+' de '+fmt(ev.data)+', chegada às '+chegada(ev,a.teamId)
+   +'. Consegue confirmar no app? '+location.origin);
+}
 function enviarCobranca(evId,quem){
   if(!exige('escalas'))return;
   const ev=evento(evId); if(!ev)return;
@@ -3384,7 +3424,8 @@ function achatar(db){
   return{
     equipes,funcoes,perfis,habilidades,eventos,eventos_equipes,
     escalas:db.escalas.map(a=>({id:a.id,evento_id:a.eventoId,funcao_id:a.funcaoId,slot:a.idx||0,
-      perfil_id:a.pessoaId,status:a.status,avisos:a.avisos||{}})),
+      perfil_id:a.pessoaId,status:a.status,avisos:a.avisos||{},
+      ...(CHEGADA_NUVEM?{chegou_em:a.chegou||null}:{})})),
     indisponibilidades:db.indisp.map(i=>({perfil_id:i.pessoaId,data:i.data})),
     ausencias:db.ausencias.map(a=>({id:a.id,perfil_id:a.pessoaId,inicio:a.inicio,fim:a.fim,motivo:a.motivo})),
     trocas:db.trocas.map(t=>({id:t.id,escala_id:t.escalaId,de_id:t.deId,para_id:t.paraId||null,
@@ -3416,6 +3457,8 @@ function montar(dados){
      migracao-foto-perfil.sql). Enviar antes derrubaria a gravacao inteira,
      como ja aconteceu com o status "expirada". */
   FOTO_NUVEM=(dados.perfis||[]).some(r=>r&&Object.prototype.hasOwnProperty.call(r,'foto'));
+  /* mesma regra da foto: a hora de chegada so sobe quando o banco tem a coluna */
+  CHEGADA_NUVEM=(dados.escalas||[]).some(r=>r&&Object.prototype.hasOwnProperty.call(r,'chegou_em'));
   d.pessoas=(dados.perfis||[]).map(p=>{
     const fids=habs[p.id]||[];
     return{id:p.id,nome:p.nome,telefone:p.telefone||'',email:p.email||'',
@@ -3431,7 +3474,7 @@ function montar(dados){
   (dados.pessoas_publicas||[]).forEach(x=>{
     if(jaTem[x.id])return;
     d.pessoas.push({id:x.id,nome:x.nome,telefone:'',email:'',nascimento:'',codigo:'',
-      perms:{},funcaoIds:[],teamIds:[],externa:true});
+      perms:{},funcaoIds:[],teamIds:[],externa:true,foto:x.foto||null});
   });
   const eqPorEvento={};
   (dados.eventos_equipes||[]).forEach(x=>{(eqPorEvento[x.evento_id]=eqPorEvento[x.evento_id]||[]).push(x);});
@@ -3445,7 +3488,7 @@ function montar(dados){
   d.escalas=(dados.escalas||[]).map(a=>{
     const tid=equipeDaFuncao[a.funcao_id];
     return{id:a.id,eventoId:a.evento_id,teamId:tid,funcaoId:a.funcao_id,idx:a.slot||0,
-      pessoaId:a.perfil_id,status:a.status,avisos:a.avisos||{}};
+      pessoaId:a.perfil_id,status:a.status,avisos:a.avisos||{},chegou:a.chegou_em||null};
   });
   d.indisp=(dados.indisponibilidades||[]).map(i=>({pessoaId:i.perfil_id,data:i.data}));
   d.ausencias=(dados.ausencias||[]).map(a=>({id:a.id,pessoaId:a.perfil_id,inicio:a.inicio,
@@ -4647,7 +4690,7 @@ function convidarAgenda(){
    +'<div class="card" style="margin:0 0 14px">'
    +linhaAg('check','Atualiza sozinha','Trocou de dia ou de horário? A sua agenda acompanha. No iPhone em pouco tempo; no Google, em algumas horas.')
    +linhaAg('cadeado','Você é quem autoriza','O app não lê nem escreve na sua agenda. Ele te dá um endereço, e você escolhe colar.')
-   +linhaAg('triste','Dá para desfazer','Apague o calendário no aparelho, ou troque o endereço aqui no app.')
+   +linhaAg('triste','Dá para desfazer','Desligue em Conta quando quiser, e apague o calendário no aparelho.')
    +'</div>'
    +'<button onclick="ligarAgenda()">Quero ativar</button><div class="gap"></div>'
    +'<button class="btn2" onclick="adiarAgenda()">Agora não</button>'
@@ -4671,7 +4714,7 @@ function conviteAgendaGrava(v){
 }
 function devoConvidarAgenda(){
   const m=conviteAgendaLido();
-  if(m.estado==='ativou')return false;
+  if(m.estado==='ativou'||m.estado==='desligou')return false;
   if((m.vezes||0)>=3)return false;
   if(m.quando&&Date.now()-new Date(m.quando).getTime()<AGENDA_ESPERA)return false;
   return true;
@@ -4740,6 +4783,10 @@ function telaAgenda(){
    +'<p class="sub" style="font-size:13px;margin:8px 2px 0;line-height:1.6">'
    +'Use se o link vazou. O antigo para de funcionar na hora, e você precisa '
    +'cadastrar o novo de novo no aparelho.</p>';
+  h+='<div class="gap"></div><button class="btn2 btn-d" onclick="desligarAgenda()">'
+   +'Desligar a agenda</button>'
+   +'<p class="sub" style="font-size:13px;margin:8px 2px 0;line-height:1.6">'
+   +'O endereço para de funcionar e a escala deixa de atualizar no calendário.</p>';
   openSheet('Sua escala na agenda',h,null);
 }
 const passoAg=(n,t)=>'<div class="row" style="cursor:default;align-items:flex-start">'
@@ -4754,6 +4801,25 @@ function copiarAgenda(){
   else prompt('Copie o endereço:',u);
 }
 
+async function desligarAgenda(){
+  if(!naNuvem())return toast('Precisa de internet');
+  if(!confirm('Desligar a agenda? A sua escala deixa de atualizar no calendário do celular.'))return;
+  try{
+    const{error}=await SB.rpc('desligar_agenda');
+    if(error)throw new Error(error.message);
+  }catch(e){return toast('Não consegui: '+((e&&e.message)||e));}
+  AGENDA_TOKEN=null; AGENDA_TEM=false; setAgendaLocal(null);
+  conviteAgendaGrava(Object.assign(conviteAgendaLido(),{estado:'desligou'}));
+  render();
+  openSheet('Agenda desligada','<p style="margin:0 0 14px;line-height:1.6">Falta um passo no aparelho: '
+   +'os cultos que já estavam no calendário ficam lá, parados, até você apagar o calendário.</p>'
+   +'<div class="card" style="margin:0 0 14px">'
+   +passoAg(1,'<b>iPhone:</b> Ajustes › Apps › Calendário › Contas › Calendários assinados, '
+     +'toque na escala e em <b>Apagar conta</b>.')
+   +passoAg(2,'<b>Google:</b> em calendar.google.com, em <b>Outros calendários</b>, toque nos três '
+     +'pontos ao lado da escala e em <b>Cancelar inscrição</b>.')
+   +'</div><button onclick="closeSheet()">Entendi</button>',null);
+}
 async function trocarAgenda(){
   if(!naNuvem())return toast('Precisa de internet');
   if(!confirm('Gerar um endereço novo? O atual para de funcionar e você terá de cadastrar de novo no aparelho.'))return;
@@ -5347,10 +5413,15 @@ function vMinha(){
      +'<div class="prox-horas"><div><small>Chegue às</small><b>'+esc(ch)+'</b></div>'
      +'<div class="sec"><small>Começa às</small><b>'+esc(x.e.hora)+'</b></div></div></div>'
      +'<div class="capsulas">'
-     +(st==='confirmado'
+     +(x.a.chegou
+       ?'<button class="cap branca" onclick="go(\'evento\',\''+x.e.id+'\')">'+ico('check',18)+'Chegou às '+horaCurta(x.a.chegou)+'</button>'
+       :checkinAberto(x.a)
+       ?'<button class="cap branca" onclick="cheguei(\''+x.a.id+'\')">'+ico('check',18)+'Cheguei</button>'
+       :st==='confirmado'
        ?'<button class="cap branca" onclick="go(\'evento\',\''+x.e.id+'\')">'+ico('check',18)+'Confirmado</button>'
        :'<button class="cap branca" onclick="respondo(\''+x.a.id+'\',\'confirmado\')">Confirmar</button>')
-     +(pediu?'<button class="cap vidro-claro" onclick="tab(\'trocas\')">Troca pedida</button>'
+     +(x.a.chegou?''
+       :pediu?'<button class="cap vidro-claro" onclick="tab(\'trocas\')">Troca pedida</button>'
             :'<button class="cap vidro-claro" onclick="pedirTrocaUI(\''+x.a.id+'\')">Trocar</button>')
      +'<button class="cap vidro-claro redondo" aria-label="Adicionar à minha agenda" '
      +'onclick="adicionarNaAgenda(\''+x.a.id+'\')">'+ico('calendario',20)+'</button>'
@@ -5689,8 +5760,11 @@ function vAvisos(){
   h+='<div class="card">';
   if(!lista.length)h+='<div class="empty"><b>Tudo em dia</b>Nenhum aviso por aqui.</div>';
   lista.slice(0,40).forEach(a=>{
-    h+='<div class="aviso"><div class="dot'+(a.lido?' off':'')+'"></div><div class="grow">'
-     +'<div>'+esc(a.texto)+'</div><div class="q">'+quandoTxt(a.quando)+'</div></div></div>';});
+    const alvo=a.ref&&evento(a.ref)?"go('evento','"+a.ref+"')"
+      :a.ref&&DB.trocas.some(t=>t.id===a.ref)?"tab('trocas')":'';
+    h+='<div class="aviso"'+(alvo?' style="cursor:pointer" onclick="'+alvo+'"':'')+'><div class="dot'+(a.lido?' off':'')+'"></div><div class="grow">'
+     +'<div>'+esc(a.texto)+'</div><div class="q">'+quandoTxt(a.quando)+'</div></div>'
+     +(alvo?'<span class="chev">&#8250;</span>':'')+'</div>';});
   h+='</div><div class="gap"></div><div class="pad"><button class="btn2" onclick="lerAvisos();render()">Marcar tudo como lido</button></div>';
   lerAvisosDepois();
   return h;
@@ -5702,6 +5776,56 @@ function lerAvisosDepois(){setTimeout(()=>{lerAvisos();
    em JPEG: fica com uns 6 KB e viaja junto com o cadastro, sem servico de
    arquivos a mais. O iPhone ja converte HEIC para JPEG ao escolher. */
 var FOTO_NUVEM=false;
+/* ---------- PRESENCA NO DIA ----------
+   A pessoa toca em "Cheguei" quando chega (a partir de 3h antes da hora de
+   chegar, so no dia). O lider ve quem ja chegou e pode marcar por quem
+   esqueceu. Com o tempo, vira o historico de presenca de cada um. */
+var CHEGADA_NUVEM=false;
+const presencaPronta=()=>!naNuvemFn()||CHEGADA_NUVEM;
+function checkinAberto(a){
+  if(!a||a.chegou||a.pessoaId!==DB.sessao||!presencaPronta())return false;
+  const ev=evento(a.eventoId); if(!ev||ev.data!==hojeIso())return false;
+  const [h,m]=String(chegada(ev,a.teamId)||'').split(':').map(Number);
+  if(!Number.isFinite(h))return true;
+  const d=new Date(); return d.getHours()*60+d.getMinutes()>=h*60+(m||0)-180;
+}
+function cheguei(aid){
+  const a=escalaPorId(aid); if(!a||a.pessoaId!==DB.sessao)return;
+  a.chegou=new Date().toISOString(); a.status='confirmado';
+  save(); render(); toast('Presença marcada. Bom culto!');
+}
+function marcarPresenca(aid,evId){
+  const a=escalaPorId(aid); if(!a||!exigeEquipe('escalas',a.teamId))return;
+  a.chegou=a.chegou?null:new Date().toISOString();
+  if(a.chegou)a.status='confirmado';
+  save(); render(); presencaEvento(evId);
+}
+function presencaEvento(evId){
+  const ev=evento(evId); if(!ev)return;
+  const lista=DB.escalas.filter(a=>a.eventoId===evId&&a.pessoaId&&noMeuEscopo(a.teamId))
+    .map(a=>({a,p:pessoa(a.pessoaId),f:funcao(a.teamId,a.funcaoId)})).filter(x=>x.p)
+    .sort((x,y)=>(!!x.a.chegou-!!y.a.chegou)||x.p.nome.localeCompare(y.p.nome));
+  const ch=lista.filter(x=>x.a.chegou).length;
+  let h='<p class="sub" style="margin:0 0 12px;padding:0">'+ch+' de '+lista.length
+   +' já chegaram. Toque para marcar quem chegou e esqueceu de avisar.</p><div class="card">';
+  lista.forEach(x=>{
+    h+='<div class="row" onclick="marcarPresenca(\''+x.a.id+'\',\''+evId+'\')">'
+     +'<div class="avatar">'+rosto(x.p)+'</div><div class="grow"><div class="t">'+esc(x.p.nome)+'</div>'
+     +'<div class="s">'+esc(x.f?x.f.nome:'')+'</div></div>'
+     +(x.a.chegou?'<span class="pres ok">'+ico('check',15)+' '+horaCurta(x.a.chegou)+'</span>'
+                 :'<span class="pres">Marcar</span>')+'</div>';});
+  if(!lista.length)h+='<div class="empty">Ninguém escalado.</div>';
+  openSheet('Presença',h+'</div>',null);
+}
+/* historico: so conta a partir do primeiro culto em que alguem marcou presenca */
+function presencaDe(pid){
+  const marcados=DB.escalas.filter(a=>a.chegou).map(a=>evento(a.eventoId)).filter(Boolean).map(e=>e.data).sort();
+  if(!marcados.length)return null;
+  const desde=marcados[0], hoje=hojeIso();
+  const minhas=DB.escalas.filter(a=>a.pessoaId===pid).map(a=>({a,e:evento(a.eventoId)}))
+    .filter(x=>x.e&&x.e.data>=desde&&(x.e.data<hoje||x.a.chegou));
+  return{desde,total:minhas.length,veio:minhas.filter(x=>x.a.chegou).length};
+}
 const podeFoto=()=>!naNuvemFn()||FOTO_NUVEM;
 function naNuvemFn(){try{return typeof naNuvem==='function'&&naNuvem();}catch(e){return false;}}
 function podeMexerNaFoto(p){return !!p&&(p.id===DB.sessao||euPossoPessoa('pessoas',p));}
