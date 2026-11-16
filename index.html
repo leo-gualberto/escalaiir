@@ -2327,6 +2327,34 @@ function apagarFuncao(tid,fid){if(!exigeEquipe('equipes',tid))return;if(!confirm
   save();closeSheet();render();}
 
 /* ============ ABA: PESSOAS ============ */
+/* ---------- QUEM ESTA SEM NOTIFICACAO ----------
+   Convocacao e lembrete so tocam no celular de quem ativou. O lider via so o
+   numero; agora ve quem e, e pede pelo WhatsApp com o passo a passo pronto
+   (e o codigo, para quem nem entrou ainda). */
+const semNotificacao=()=>pessoasNoEscopo().filter(x=>!x.externa&&!recebePush(x.id));
+function textoAtivarAvisos(p){
+  const nome=p.nome.split(' ')[0], url=location.origin;
+  if(!p.entrou)return 'Oi, '+nome+'! Você está na escala da equipe. Entre no app em '+url
+   +' com o código '+p.codigo+'.\n\nDepois, para receber as convocações e os lembretes:\n'
+   +'1. Instale na tela de início (no iPhone: Safari, Compartilhar, Adicionar à Tela de Início).\n'
+   +'2. Abra pelo ícone, toque em Conta e em Ativar notificações, e depois em Permitir.';
+  return 'Oi, '+nome+'! Ative as notificações do app da escala, para receber as convocações e os lembretes dos cultos:\n\n'
+   +'1. Abra o app pelo ícone na tela de início (no iPhone ele precisa estar instalado: Safari, Compartilhar, Adicionar à Tela de Início).\n'
+   +'2. Toque em Conta e em Ativar notificações, e depois em Permitir.\n\n'+url;
+}
+function semAvisoUI(){
+  const lista=semNotificacao().sort((a,b)=>a.nome.localeCompare(b.nome));
+  let h='<p class="sub" style="margin:0 0 12px;padding:0">Estas pessoas não recebem convocação nem lembrete no celular. '
+   +'Os avisos ficam guardados no app, mas o celular não toca.</p><div class="card">';
+  lista.forEach(p=>{h+='<div class="row" style="cursor:default"><div class="avatar">'+rosto(p)+'</div>'
+    +'<div class="grow"><div class="t">'+esc(p.nome)+'</div><div class="s">'
+    +(p.entrou?'Entrou, mas não ativou':'Ainda não entrou no app')+'</div></div>'
+    +(temTelefone(p)?'<button class="msg" aria-label="Pedir para '+esc(p.nome)+' ativar, pelo WhatsApp" '
+      +'onclick="pedirAtivar(\''+p.id+'\')">'+ico('conversa',17)+'</button>':'')+'</div>';});
+  if(!lista.length)h+='<div class="empty">Todo mundo recebe notificação.</div>';
+  openSheet('Sem notificação',h+'</div>',null);
+}
+function pedirAtivar(pid){const p=pessoa(pid);if(p&&temTelefone(p))abrirWhatsUrl(telE164(p.telefone),textoAtivarAvisos(p));}
 function vPessoas(){
   const base=pessoasNoEscopo(), meu=meuEscopo();
   const entraram=base.filter(x=>x.entrou).length;
@@ -2340,6 +2368,13 @@ function vPessoas(){
   if(!base.length)return h+'<div class="empty"><b>Nenhum voluntário</b>'
     +'Toque no + para cadastrar. Basta nome e telefone.</div>';
   h+=campoBusca('pessoas','Procurar voluntário');
+  if(naNuvem()&&euPosso('pessoas')){
+    const mudos=semNotificacao().length;
+    if(mudos&&!BUSCA.pessoas)h+='<div class="card"><div class="row" onclick="semAvisoUI()">'
+      +'<div class="avatar" style="background:var(--warn-soft);color:var(--warn)">'+ico('sino',19)+'</div>'
+      +'<div class="grow"><div class="t">'+(mudos===1?'1 pessoa sem notificação':mudos+' pessoas sem notificação')+'</div>'
+      +'<div class="s">Não recebem convocação nem lembrete</div></div><span class="chev">&#8250;</span></div></div>';
+  }
   /* calculado uma vez, fora do laco: dentro dele isto varria a lista inteira
      de escalas uma vez por pessoa, por pessoa */
   const ciclo=cicloAtual();
@@ -5993,6 +6028,30 @@ if('serviceWorker' in navigator){
     }
   });
 }
+
+/* ---------- LINK DA NOTIFICACAO ----------
+   Tocar na notificacao abria o app na tela inicial. Agora o servidor manda
+   para onde ir: ?escala=ID abre o culto daquela escala (e com &confirmar=1,
+   vindo do botao Confirmar do Android, ja confirma); ?evento=ID abre o culto;
+   ?aba=trocas abre a aba. Espera os dados chegarem da nuvem antes de agir. */
+(function(){
+  let q; try{q=new URLSearchParams(location.search);}catch(e){return;}
+  const esc_=q.get('escala'), evq=q.get('evento'), aba=q.get('aba'), conf=q.get('confirmar')==='1';
+  if(!esc_&&!evq&&!aba)return;
+  try{history.replaceState(history.state,'',location.pathname);}catch(e){}
+  let tent=0;
+  const tentar=()=>{
+    const de_novo=()=>{if(++tent<30)setTimeout(tentar,500);};
+    if(!DB||!DB.sessao)return de_novo();
+    if(aba){ if(['trocas','escalas','minha','agenda','conta','perfil','pessoas','equipes'].indexOf(aba)>=0)tab(aba); return; }
+    const a=esc_?DB.escalas.find(x=>x.id===esc_):null;
+    const evid=a?a.eventoId:evq;
+    if(!evid||!evento(evid))return de_novo();
+    if(conf&&a&&a.pessoaId===DB.sessao&&a.status!=='confirmado')respondo(a.id,'confirmado');
+    go('evento',evid);
+  };
+  setTimeout(tentar,300);
+})();
 </script>
 </body>
 </html>

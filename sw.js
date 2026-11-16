@@ -183,10 +183,16 @@ self.addEventListener('push', e => {
     body: d.corpo || 'Voce tem uma novidade na escala.',
     icon: './icon-192.png',
     badge: './icon-192.png',
-    tag: d.tag || 'escala',
+    /* sem etiqueta propria, cada aviso ganha uma unica: com a mesma, o
+       aviso novo apagaria o anterior na tela */
+    tag: d.tag || ('escala-' + Date.now()),
     renotify: true,
-    data: { url: d.url || './index.html' }
+    data: { url: d.url || './index.html', escala: d.escala || null }
   };
+  /* Botao Confirmar direto na notificacao. O Android mostra; o iPhone nao
+     aceita botoes em app da tela de inicio e simplesmente ignora. */
+  if (d.escala && d.acao === 'confirmar')
+    opcoes.actions = [{ action: 'confirmar', title: 'Confirmar presença' }];
   // a bolinha do ícone: o servidor manda quantos avisos a pessoa tem em
   // aberto, então o número fica certo mesmo com o app fechado
   const badge = typeof d.badge === 'number' ? d.badge : null;
@@ -205,7 +211,11 @@ self.addEventListener('push', e => {
 /* Tocar na notificacao: reaproveita a janela aberta em vez de abrir outra. */
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const destino = (e.notification.data && e.notification.data.url) || './index.html';
+  const dados = e.notification.data || {};
+  let destino = dados.url || './index.html';
+  /* tocou em Confirmar: abre o app ja confirmando aquela escala */
+  if (e.action === 'confirmar' && dados.escala)
+    destino = './index.html?escala=' + encodeURIComponent(dados.escala) + '&confirmar=1';
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(lista => {
       for (const c of lista) {
