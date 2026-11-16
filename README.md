@@ -28,6 +28,7 @@ senão a sincronização daquela tabela para. O próprio app avisa em
 | `migracoes/criar-igreja.sql` | script para criar um time novo, isolado, com o perfil de administrador dele |
 | `migracoes/migracao-troca-expirada.sql` | aceita `status='expirada'` em trocas — obrigatória junto com a versão que fecha pedidos de culto passado |
 | `migracoes/migracao-foto-perfil.sql` | Foto de perfil: coluna `foto` em `perfis`, com trava de tamanho e formato |
+| `migracoes/migracao-avisos-de-troca.sql` | Pedido de troca avisa a equipe e o líder pelo banco (o celular do voluntário não sabe quem pode assumir) |
 | `migracoes/correcao-agenda-token.sql` | conserta a geração do token da agenda do celular: `gen_random_bytes` mora em `extensions`, não em `public` |
 | `migracoes/migracao-codigos-acesso.sql` | contagem de uso do código, `novo_codigo()` e `revogar_acessos()` (v1.3). Código não vence: a coluna de validade existe, mas só é usada se alguém chamar `novo_codigo(perfil, dias)` |
 

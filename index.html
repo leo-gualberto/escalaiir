@@ -2922,11 +2922,27 @@ function enviarCobranca(evId,quem){
 /* Lider de equipe so recebe o que e da equipe dele: a troca do Louvor nao
    chega para o lider de Palco. A equipe sai do proprio ref (troca ou
    escala); sem como descobrir, avisa todos, que e o comportamento antigo. */
+/* O banco tem como saber quem e lider; o celular do voluntario nao. Com a
+   migracao-avisos-de-troca.sql rodada, o aviso a lideranca e feito por ele
+   (rpc avisar_lideres). Esta sonda descobre se a migracao ja rodou. */
+var AVISOS_NO_BANCO=false;
+async function sondarAvisosNoBanco(){
+  try{
+    if(!naNuvem()||!SB)return;
+    const{error}=await SB.rpc('avisar_lideres',{p_texto:null});
+    AVISOS_NO_BANCO=!error;
+  }catch(e){AVISOS_NO_BANCO=false;}
+}
 function avisarLideres(texto,tipo,ref,exceto,equipes){
   if(!equipes&&ref){
     const t=DB.trocas.find(x=>x.id===ref);
     const a=t?escalaPorId(t.escalaId):escalaPorId(ref);
     equipes=a?[a.teamId]:null;
+  }
+  if(naNuvem()&&AVISOS_NO_BANCO&&SB){
+    SB.rpc('avisar_lideres',{p_texto:texto,p_tipo:tipo||'info',p_ref:ref||null,
+      p_equipes:equipes||null,p_exceto:exceto||null}).then(r=>{if(r&&r.error)console.warn('avisar_lideres',r.error);});
+    return;
   }
   DB.pessoas.filter(p=>(pode(p,'trocas')||pode(p,'escalas'))&&p.id!==exceto)
     .filter(p=>{const e=escopoDe(p);return !e||!equipes||equipes.some(x=>e.indexOf(x)>=0);})
@@ -3154,6 +3170,15 @@ function pedirTroca(escalaId,paraId,motivo){
   const t={id:uid(),escalaId,deId:a.pessoaId,paraId:paraId||null,motivo:motivo||'',
     status:'aberta',criada:new Date().toISOString()};
   DB.trocas.push(t);
+  /* Na nuvem, quem avisa e o banco (gatilho trocas_avisar): so ele sabe quem
+     pode assumir e quem lidera. O celular do voluntario nao conhece as
+     funcoes dos colegas, e por isso os pedidos feitos por voluntarios nao
+     avisavam ninguem -- nem a equipe, nem o lider. */
+  if(naNuvem()&&AVISOS_NO_BANCO){
+    save();
+    toast(paraId?'Pedido enviado':'Pedido enviado. Quem pode assumir vai ser avisado.');
+    return;
+  }
   const desc=f.nome+' em '+ev.titulo+' ('+fmt(ev.data)+')';
   let aptos=[];
   if(paraId)avisar(paraId,de.nome+' pediu que você assuma '+desc+'.','troca',t.id);
@@ -6029,6 +6054,8 @@ if('serviceWorker' in navigator){
   });
 }
 
+setTimeout(sondarAvisosNoBanco,3000);
+setInterval(()=>{if(!AVISOS_NO_BANCO)sondarAvisosNoBanco();},60000);
 /* ---------- LINK DA NOTIFICACAO ----------
    Tocar na notificacao abria o app na tela inicial. Agora o servidor manda
    para onde ir: ?escala=ID abre o culto daquela escala (e com &confirmar=1,
