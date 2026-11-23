@@ -621,6 +621,28 @@ body .chip.on{background:var(--brand);color:#fff}
 .pres{font-size:14px;font-weight:600;color:var(--tint,#007AFF);display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .pres.ok{color:var(--ok)}
 .chegou{font-size:13px;color:var(--ok);font-weight:600;margin-top:2px}
+.ck-num{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:6px 16px 14px}
+.ck-num>div{background:var(--card);border-radius:16px;padding:10px 4px 9px;text-align:center}
+.ck-num b{display:block;font-size:24px;font-weight:700;letter-spacing:-.5px;color:var(--ink)}
+.ck-num b small{font-size:14px;color:var(--muted);font-weight:600}
+.ck-num span{font-size:12px;color:var(--muted)}
+.ck-num.dentro{margin:0;padding:12px 12px 6px;grid-template-columns:repeat(3,1fr)}
+.ck-num.dentro>div{background:var(--fill,#F2F2F7)}
+.atraso,.ck-num b.atraso{color:var(--bad)}
+.pontual{color:var(--ok)}
+.seg{display:flex;background:var(--fill,#E9E9EE);border-radius:10px;padding:2px;margin:0 0 10px}
+body .seg button{flex:1;background:transparent;color:var(--ink);font-size:13px;font-weight:600;padding:7px 2px;
+  border-radius:8px;min-height:0;width:auto;box-shadow:none;margin:0}
+body .seg button.on{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg small{color:var(--muted);font-weight:500}
+body button.ck-bt{width:auto;min-height:0;padding:8px 14px;font-size:15px;border-radius:99px;flex:none;margin:0}
+body button.ck-bt.sai{background:var(--fill,#E9E9EE);color:var(--brand)}
+.ck-st{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;line-height:1.35;flex:none;margin-right:8px;text-align:right}
+.ck-st b{font-size:15px;font-weight:600;color:var(--ink)}
+.ck-st.feito b,.ck-st.feito span{color:var(--muted)}
+.ck-row .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ck-linha{font-size:13px;color:var(--muted);margin-top:1px}
+.ck-ok{color:var(--ok);display:flex;flex:none;margin-right:6px}
 body .slot .chegou{order:-1}
 .capsulas .cap{flex:1}
 body button.cap.branca{background:#fff;color:#0062D6}
@@ -832,11 +854,14 @@ var PERMS={
   pessoas:'Cadastrar e editar pessoas',
   equipes:'Criar equipes e funções',
   trocas:'Aprovar e mediar trocas',
+  checkin:'Fazer check-in dos voluntários',
   admin:'Administrador (tudo + permissões)'
 };
 function pode(p,k){return !!(p&&p.perms&&(p.perms.admin||p.perms[k]));}
 function ehAdmin(p){return !!(p&&p.perms&&p.perms.admin);}
-function temPainel(p){return !!(p&&p.perms&&Object.keys(PERMS).some(k=>p.perms[k]));}
+/* check-in nao abre o painel de lider: quem so faz check-in continua com a
+   barra do voluntario, mais a aba Check-in */
+function temPainel(p){return !!(p&&p.perms&&Object.keys(PERMS).some(k=>k!=='checkin'&&p.perms[k]));}
 function souEu(){return pessoa(DB.sessao);}
 function euPosso(k){return pode(souEu(),k);}
 function exige(k){if(euPosso(k))return true;toast('Você não tem permissão para isso');return false;}
@@ -1347,6 +1372,7 @@ const ICONS={
  perfil:'<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6.2 18.5a6.5 6.5 0 0 1 11.6 0"/>'};
 const RAIZ={escalas:'Escalas',equipes:'Equipes',pessoas:'Pessoas',perfil:'Perfil'};
 
+ICONS.checkin='<rect x="4" y="6" width="16" height="15" rx="2.5"/><path d="M9 6V3h6v3"/><circle cx="12" cy="12" r="2.5"/><path d="M8 18a4 4 0 0 1 8 0"/>';
 ICONS.trocas='<path d="M17 2l4 4-4 4"/><path d="M3 6h18"/><path d="M7 22l-4-4 4-4"/><path d="M21 18H3"/>';
 ICONS.agenda='<rect x="3" y="4" width="18" height="18" rx="3"/><path d="M8 2v4M16 2v4M3 10h18M9 16l2 2 4-4"/>';
 /* A barra do voluntario e [minha · trocas · agenda · conta]. Como 'agenda' ja
@@ -1367,10 +1393,10 @@ function navHtml(itens,ativo,badges){
     +ROTULO[k]+'</button>').join('');
 }
 const ROTULO={escalas:'Escalas',equipes:'Equipes',pessoas:'Pessoas',perfil:'Perfil',
-  minha:'Minha escala',trocas:'Trocas',agenda:'Agenda',conta:'Conta'};
+  minha:'Minha escala',trocas:'Trocas',agenda:'Agenda',conta:'Conta',checkin:'Check-in'};
 const VIEWS={escalas:vEscalas,evento:vEvento,equipes:vEquipes,equipe:vEquipe,pessoas:vPessoas,
   pessoa:vPessoa,perfil:vPerfil,minha:vMinha,trocas:vTrocas,agenda:vAgenda,conta:vConta,
-  avisos:vAvisos,lembretes:vLembretes};
+  avisos:vAvisos,lembretes:vLembretes,checkin:vCheckin,presenca:vPresenca};
 /* Rede de seguranca: se uma tela quebrar, o app nao pode congelar com ela.
    Sem isto, um erro ao desenhar deixava a pessoa presa — nenhum toque
    respondia, porque toda tentativa de redesenhar quebrava no mesmo ponto. */
@@ -1430,8 +1456,8 @@ function renderInterno(){
     trocarTela(a,'completar',()=>vCompletar(me));nav.innerHTML='';acessibilizar(a);return;}
   const itens=painel
     ?['escalas'].concat(pode(me,'equipes')?['equipes']:[],pode(me,'pessoas')?['pessoas']:[],
-      ['trocas','perfil'])
-    :['minha','trocas','agenda','conta'];
+      temCheckin(me)?['checkin']:[],['trocas','perfil'])
+    :['minha'].concat(temCheckin(me)?['checkin']:[],['trocas','agenda','conta']);
   if(!itens.includes(VIEW.n)&&!VIEWS[VIEW.n])VIEW={n:itens[0],id:null};
   const v=VIEWS[VIEW.n]||VIEWS[itens[0]];
   trocarTela(a,chaveTela(),()=>v(VIEW.id));
@@ -1784,6 +1810,7 @@ function vEvento(id){
    +(s.recusados?'<div class="lin"><i style="background:var(--sym-bad)"></i>Precisam trocar<b>'+s.recusados+'</b></div>':'')
    +'</div></div>';
   h+=cartaoInfoCulto(ev);
+  h+=cartaoPresencaCulto(ev);
   /* quem serve neste culto tem um atalho para resolver a propria vaga aqui
      mesmo, sem ter de voltar e procurar na lista */
   const minhaAqui=DB.escalas.find(a=>a.eventoId===ev.id&&a.pessoaId===DB.sessao);
@@ -1867,9 +1894,9 @@ function acoesEvento(ev,s){
   }
   /* no dia e na semana seguinte, a lista de presenca; no dia, ela e o botao principal */
   const dd=diasAte(ev.data);
-  if(euPosso('escalas')&&presencaPronta()&&dd<=0&&dd>=-7&&se.preenchidos){
-    const ch=DB.escalas.filter(x=>x.eventoId===ev.id&&x.pessoaId&&x.chegou&&noMeuEscopo(x.teamId)).length;
-    const item=['Presença ('+ch+' de '+se.preenchidos+')',"presencaEvento('"+ev.id+"')"];
+  if(fazCheckin()&&presencaPronta()&&dd<=0&&dd>=-7&&se.preenchidos){
+    const ls=DB.escalas.filter(x=>x.eventoId===ev.id&&x.pessoaId&&vejoNoCheckin(x));
+    const item=['Check-in ('+ls.filter(x=>x.chegou).length+' de '+ls.length+')',"go('checkin','"+ev.id+"')"];
     if(dd===0)a.unshift(item); else a.push(item);
   }
   a.push(['Compartilhar',"compartilhar('"+ev.id+"')"]);
@@ -2438,12 +2465,7 @@ function vPessoa(id){
   h+='<p class="sub">'+esc(p.telefone||'sem telefone')+' &middot; '+carga(p.id)+' escalas '
    +rotuloTotal()+'</p>';
   h+=cartaoFoto(p);
-  const pres=presencaDe(p.id);
-  if(pres&&pres.total)h+='<div class="sec-t">Presença</div><div class="card">'
-   +linhaDado('Chegou e marcou presença',pres.veio+' de '+pres.total+' cultos ('
-     +Math.round(pres.veio/pres.total*100)+'%)')
-   +'<div class="row" style="cursor:default"><div class="grow"><div class="s">Contando desde '
-   +fmt(pres.desde)+', quando a presença começou a ser marcada.</div></div></div></div>';
+  h+=cartaoHistoricoPessoa(p);
   const completo=p.email&&p.nascimento;
   h+='<div class="pad"><div class="card" style="margin:0 0 12px;padding:14px 16px">'
    +'<div style="display:flex;align-items:center;gap:12px">'
@@ -2755,6 +2777,8 @@ function vPerfil(){
    +'<div class="row" onclick="reportarErro()"><div class="grow"><div class="t">Reportar um problema</div>'
    +'<div class="s">Registra também a ficha técnica deste aparelho</div></div>'
    +'<span class="chev">&#8250;</span></div>'
+   +(vejoPresenca()?'<div class="row" onclick="go(\'presenca\')"><div class="grow"><div class="t">Presença da equipe</div>'
+     +'<div class="s">Faltas, atrasos e quem está sempre no horário</div></div><span class="chev">&#8250;</span></div>':'')
    +'<div class="row" onclick="relatorio()"><div class="grow"><div class="t">Carga do mês</div>'
    +'<div class="s">Quem está servindo demais ou de menos neste mês</div></div><span class="chev">&#8250;</span></div>'
    +'<div class="row" onclick="exportar()"><div class="grow"><div class="t">Exportar backup</div>'
@@ -3431,7 +3455,8 @@ function achatar(db){
     equipes,funcoes,perfis,habilidades,eventos,eventos_equipes,
     escalas:db.escalas.map(a=>({id:a.id,evento_id:a.eventoId,funcao_id:a.funcaoId,slot:a.idx||0,
       perfil_id:a.pessoaId,status:a.status,avisos:a.avisos||{},
-      ...(CHEGADA_NUVEM?{chegou_em:a.chegou||null}:{})})),
+      ...(CHEGADA_NUVEM?{chegou_em:a.chegou||null}:{}),
+      ...(SAIDA_NUVEM?{saiu_em:a.saiu||null}:{})})),
     indisponibilidades:db.indisp.map(i=>({perfil_id:i.pessoaId,data:i.data})),
     ausencias:db.ausencias.map(a=>({id:a.id,perfil_id:a.pessoaId,inicio:a.inicio,fim:a.fim,motivo:a.motivo})),
     trocas:db.trocas.map(t=>({id:t.id,escala_id:t.escalaId,de_id:t.deId,para_id:t.paraId||null,
@@ -3465,6 +3490,7 @@ function montar(dados){
   FOTO_NUVEM=(dados.perfis||[]).some(r=>r&&Object.prototype.hasOwnProperty.call(r,'foto'));
   /* mesma regra da foto: a hora de chegada so sobe quando o banco tem a coluna */
   CHEGADA_NUVEM=(dados.escalas||[]).some(r=>r&&Object.prototype.hasOwnProperty.call(r,'chegou_em'));
+  SAIDA_NUVEM=(dados.escalas||[]).some(r=>r&&Object.prototype.hasOwnProperty.call(r,'saiu_em'));
   d.pessoas=(dados.perfis||[]).map(p=>{
     const fids=habs[p.id]||[];
     return{id:p.id,nome:p.nome,telefone:p.telefone||'',email:p.email||'',
@@ -3494,7 +3520,8 @@ function montar(dados){
   d.escalas=(dados.escalas||[]).map(a=>{
     const tid=equipeDaFuncao[a.funcao_id];
     return{id:a.id,eventoId:a.evento_id,teamId:tid,funcaoId:a.funcao_id,idx:a.slot||0,
-      pessoaId:a.perfil_id,status:a.status,avisos:a.avisos||{},chegou:a.chegou_em||null};
+      pessoaId:a.perfil_id,status:a.status,avisos:a.avisos||{},chegou:a.chegou_em||null,
+      saiu:a.saiu_em||null,presencaPor:a.presenca_por||null};
   });
   d.indisp=(dados.indisponibilidades||[]).map(i=>({pessoaId:i.perfil_id,data:i.data}));
   d.ausencias=(dados.ausencias||[]).map(a=>({id:a.id,pessoaId:a.perfil_id,inicio:a.inicio,
@@ -5819,8 +5846,9 @@ var FOTO_NUVEM=false;
    chegar, so no dia). O lider ve quem ja chegou e pode marcar por quem
    esqueceu. Com o tempo, vira o historico de presenca de cada um. */
 var CHEGADA_NUVEM=false;
-const presencaPronta=()=>!naNuvemFn()||CHEGADA_NUVEM;
+const presencaPronta=()=>!naNuvemFn()||(CHEGADA_NUVEM&&SAIDA_NUVEM);
 function checkinAberto(a){
+  return false;  /* desde a equipe de check-in, so ela marca a presenca */
   if(!a||a.chegou||a.pessoaId!==DB.sessao||!presencaPronta())return false;
   const ev=evento(a.eventoId); if(!ev||ev.data!==hojeIso())return false;
   const [h,m]=String(chegada(ev,a.teamId)||'').split(':').map(Number);
@@ -5864,6 +5892,292 @@ function presencaDe(pid){
     .filter(x=>x.e&&x.e.data>=desde&&(x.e.data<hoje||x.a.chegou));
   return{desde,total:minhas.length,veio:minhas.filter(x=>x.a.chegou).length};
 }
+/* ============ EQUIPE DE CHECK-IN ============
+   Quem tem a permissao "checkin" ve a escala de todas as equipes e, na hora
+   de chegar, abre a lista do culto: da o check-in (entrega o cracha) e, no
+   fim, o check-out (recolhe o cracha). Cada marcacao guarda a hora; o atraso
+   e calculado contra a hora de chegada da equipe na escala, com tolerancia.
+   So a equipe de check-in (marcada pelo administrador) ve e usa a aba; os
+   lideres veem os relatorios. O voluntario nao marca a propria presenca. */
+const TOLERANCIA_MIN=5;
+var SAIDA_NUVEM=false;
+/* So quem o administrador marcou como equipe de check-in ve e usa o check-in
+   (nem o administrador entra sozinho: ele se marca, se quiser) */
+const temCheckin=p=>!!(p&&p.perms&&p.perms.checkin);
+const fazCheckin=()=>temCheckin(eu());
+const vejoNoCheckin=a=>fazCheckin()||noMeuEscopo(a.teamId);
+const vejoPresenca=()=>fazCheckin()||euPosso('escalas')||euPosso('pessoas');
+function horaEsperada(a){
+  const ev=evento(a.eventoId); if(!ev)return null;
+  try{return instanteBR(ev.data,chegada(ev,a.teamId));}catch(e){return null;}
+}
+function atrasoMin(a){
+  if(!a||!a.chegou)return null;
+  const e=horaEsperada(a); if(!e)return null;
+  return Math.round((new Date(a.chegou)-e)/60000);
+}
+const atrasou=a=>{const m=atrasoMin(a);return m!=null&&m>TOLERANCIA_MIN;};
+const minTxt=m=>m>=60?Math.floor(m/60)+'h'+String(m%60).padStart(2,'0'):m+' min';
+function tempoServido(a){
+  if(!a||!a.chegou||!a.saiu)return null;
+  return Math.max(0,Math.round((new Date(a.saiu)-new Date(a.chegou))/60000));
+}
+/* rotulo curto da chegada: "no horário" ou "12 min atrasado" */
+function rotuloAtraso(a){
+  const m=atrasoMin(a); if(m==null)return '';
+  return m>TOLERANCIA_MIN?'<span class="atraso">'+minTxt(m)+' atrasado</span>'
+                         :'<span class="pontual">no horário</span>';
+}
+/* a conta de faltas so comeca no primeiro culto com check-in feito */
+function checkinDesde(){
+  let d=null;
+  DB.escalas.forEach(a=>{if(!a.chegou)return;const ev=evento(a.eventoId);
+    if(ev&&(!d||ev.data<d))d=ev.data;});
+  return d;
+}
+/* estado de uma escala para os relatorios */
+function situacaoEscala(a){
+  const ev=evento(a.eventoId); if(!ev||!a.pessoaId)return null;
+  if(a.chegou)return atrasou(a)?'atrasado':'pontual';
+  if(ev.data<hojeIso())return 'faltou';
+  return 'aguardando';
+}
+
+/* ---------- a lista do check-in ---------- */
+const CK={ev:null,filtro:'faltam'};
+function cultosDoCheckin(){
+  const h=hojeIso();
+  return DB.eventos.filter(e=>e.data===h).sort((a,b)=>String(a.hora).localeCompare(String(b.hora)));
+}
+function cultoPadrao(lista){
+  if(!lista.length)return null;
+  /* o primeiro que ainda nao terminou (inicio + 4h); senao, o ultimo do dia */
+  const agora=Date.now();
+  const vivo=lista.find(e=>{try{return instanteBR(e.data,e.hora).getTime()+4*3600000>agora;}catch(x){return true;}});
+  return (vivo||lista[lista.length-1]).id;
+}
+function vCheckin(id){
+  const me=eu();
+  const raiz=!id;
+  let h=raiz?hero('Check-in','','','',fmtLong(hojeIso())):voltarBar('Check-in');
+  if(!fazCheckin())return h+'<div class="empty">Você não tem acesso ao check-in.</div>';
+  if(!presencaPronta())return h+'<div class="empty"><b>Quase lá</b>Falta rodar a atualização do banco '
+    +'(migracao-equipe-checkin.sql) para o check-in funcionar.</div>';
+  const hoje=cultosDoCheckin();
+  let evId=id||CK.ev;
+  if(!evId||!evento(evId))evId=cultoPadrao(hoje);
+  if(!id&&evId&&!hoje.some(e=>e.id===evId))evId=cultoPadrao(hoje);
+  CK.ev=evId;
+  const ev=evId?evento(evId):null;
+  if(!ev){
+    const prox=futuros().find(e=>e.data>hojeIso());
+    return h+'<div class="empty"><b>Nenhum culto hoje</b>'
+      +(prox?'O próximo é '+esc(prox.titulo)+', '+fmtLong(prox.data)+'. A lista abre no dia.':'A lista abre no dia do culto.')
+      +'</div>';
+  }
+  if(!raiz)h+='<div class="pad"><p class="sub" style="padding:0;margin:0 0 4px"><b style="color:var(--ink)">'
+    +esc(ev.titulo)+'</b>, '+fmtLong(ev.data)+', '+esc(ev.hora)+'</p></div>';
+  else if(hoje.length>1)h+='<div class="pad"><div class="chips">'+hoje.map(e=>
+      '<button class="chip'+(e.id===ev.id?' on':'')+'" onclick="CK.ev=\''+e.id+'\';render()">'
+      +esc(e.hora)+' · '+esc(e.titulo)+'</button>').join('')+'</div></div>';
+  else h+='<div class="pad"><p class="sub" style="padding:0;margin:0 0 4px"><b style="color:var(--ink)">'
+    +esc(ev.titulo)+'</b>, começa às '+esc(ev.hora)+'</p></div>';
+
+  const todas=DB.escalas.filter(a=>a.eventoId===ev.id&&a.pessoaId&&vejoNoCheckin(a))
+    .map(a=>({a,p:pessoa(a.pessoaId),f:funcao(a.teamId,a.funcaoId),t:team(a.teamId),ch:chegada(ev,a.teamId)}))
+    .filter(x=>x.p);
+  const n=todas.length, cheg=todas.filter(x=>x.a.chegou).length, sai=todas.filter(x=>x.a.saiu).length,
+        atr=todas.filter(x=>atrasou(x.a)).length;
+  h+='<div class="ck-num">'
+   +'<div><b>'+cheg+'<small>/'+n+'</small></b><span>chegaram</span></div>'
+   +'<div><b>'+(n-cheg)+'</b><span>faltam</span></div>'
+   +'<div><b class="'+(atr?'atraso':'')+'">'+atr+'</b><span>atrasados</span></div>'
+   +'<div><b>'+sai+'</b><span>saíram</span></div></div>';
+  const F=[['faltam','Faltam',n-cheg],['presentes','Presentes',cheg-sai],['sairam','Saíram',sai],['todos','Todos',n]];
+  h+='<div class="pad"><div class="seg">'+F.map(f=>'<button class="'+(CK.filtro===f[0]?'on':'')+'" '
+    +'onclick="CK.filtro=\''+f[0]+'\';render()">'+f[1]+' <small>'+f[2]+'</small></button>').join('')+'</div></div>';
+  h+=campoBusca('checkin','Procurar pelo nome');
+  const busca=BUSCA.checkin||'';
+  const lista=todas.filter(x=>busca||(CK.filtro==='todos'||
+      (CK.filtro==='faltam'&&!x.a.chegou)||(CK.filtro==='presentes'&&x.a.chegou&&!x.a.saiu)||
+      (CK.filtro==='sairam'&&x.a.saiu)))
+    .filter(x=>casa(x.p.nome,busca))
+    .sort((x,y)=>String(x.ch).localeCompare(String(y.ch))||x.p.nome.localeCompare(y.p.nome));
+  h+='<div class="card ck-lista">';
+  lista.forEach(x=>{
+    const a=x.a, cor=x.t?x.t.cor:'var(--brand)';
+    let dir, estado;
+    if(!a.chegou){
+      dir='<button class="ck-bt" onclick="event.stopPropagation();fazerCheckin(\''+a.id+'\')">Check-in</button>';
+      estado='<div class="ck-linha">chegar às '+esc(x.ch)+'</div>';
+    }else if(!a.saiu){
+      dir='<button class="ck-bt sai" onclick="event.stopPropagation();fazerCheckout(\''+a.id+'\')">Check-out</button>';
+      estado='<div class="ck-linha">chegou '+horaCurta(a.chegou)+' · '+rotuloAtraso(a)+'</div>';
+    }else{
+      dir='<span class="ck-ok">'+ico('check',18)+'</span>';
+      estado='<div class="ck-linha">'+horaCurta(a.chegou)+' – '+horaCurta(a.saiu)+' · serviu '+minTxt(tempoServido(a))
+        +(atrasou(a)?' · '+rotuloAtraso(a):'')+'</div>';
+    }
+    h+='<div class="row ck-row"'+(a.chegou?' onclick="opcoesCheckin(\''+a.id+'\')"':' style="cursor:default"')+'>'
+     +'<div class="avatar" style="background:'+cor+';color:#fff">'+rosto(x.p)+'</div>'
+     +'<div class="grow"><div class="t">'+esc(x.p.nome)+'</div>'
+     +'<div class="s">'+esc(x.f?x.f.nome:'')+' · '+esc(x.t?x.t.nome:'')+'</div>'+estado+'</div>'+dir+'</div>';});
+  if(!lista.length)h+='<div class="empty">'+(busca?'Ninguém com esse nome neste culto.'
+    :CK.filtro==='faltam'?(n?'Todo mundo já chegou.':'Ninguém escalado neste culto.'):'Ninguém aqui ainda.')+'</div>';
+  h+='</div>';
+  if(n&&CK.filtro==='faltam'&&!busca)h+='<p class="sub" style="font-size:13px">Atrasado é quem chega mais de '
+    +TOLERANCIA_MIN+' minutos depois do horário de chegada da equipe.</p>';
+  return h;
+}
+function fazerCheckin(aid){
+  const a=escalaPorId(aid); if(!a||!fazCheckin())return;
+  a.chegou=new Date().toISOString(); a.saiu=null; save(); render();
+  const p=pessoa(a.pessoaId), m=atrasoMin(a);
+  toast((p?p.nome.split(' ')[0]+': ':'')+(m!=null&&m>TOLERANCIA_MIN?minTxt(m)+' de atraso':'no horário')+'. Entregue o crachá.');
+}
+function fazerCheckout(aid){
+  const a=escalaPorId(aid); if(!a||!a.chegou||!fazCheckin())return;
+  a.saiu=new Date().toISOString(); save(); render();
+  const p=pessoa(a.pessoaId);
+  toast('Check-out'+(p?' de '+p.nome.split(' ')[0]:'')+'. Recolha o crachá.');
+}
+function opcoesCheckin(aid){
+  const a=escalaPorId(aid); if(!a||!a.chegou)return;
+  const p=pessoa(a.pessoaId), f=funcao(a.teamId,a.funcaoId), t=team(a.teamId), ev=evento(a.eventoId);
+  const por=a.presencaPor?pessoa(a.presencaPor):null, m=atrasoMin(a);
+  let h='<div class="foto-bloco"><div class="avatar foto-grande">'+rosto(p)+'</div></div>'
+   +'<div class="card" style="margin:0 0 14px">'
+   +linhaDado('Função',(t?t.nome+' · ':'')+(f?f.nome:''))
+   +linhaDado('Horário de chegada',chegada(ev,a.teamId))
+   +linhaDado('Check-in',horaCurta(a.chegou)+(m==null?'':m>TOLERANCIA_MIN?' · '+minTxt(m)+' atrasado':' · no horário'))
+   +(a.saiu?linhaDado('Check-out',horaCurta(a.saiu)+' · serviu '+minTxt(tempoServido(a))):'')
+   +(por?linhaDado('Registrado por',por.nome):'')+'</div>';
+  if(a.saiu)h+='<button class="btn2" onclick="desfazerCheckin(\''+aid+'\',\'saida\')">Desfazer o check-out</button><div class="gap"></div>';
+  h+='<button class="btn2 btn-d" onclick="desfazerCheckin(\''+aid+'\',\'tudo\')">Desfazer o check-in</button>';
+  openSheet(p?p.nome:'Check-in',h,null);
+}
+function desfazerCheckin(aid,o_que){
+  const a=escalaPorId(aid); if(!a||!fazCheckin())return;
+  if(o_que==='saida')a.saiu=null; else{a.chegou=null;a.saiu=null;}
+  save(); closeSheet(); render(); toast(o_que==='saida'?'Check-out desfeito':'Check-in desfeito');
+}
+
+/* ---------- resumo de um culto ---------- */
+function resumoPresenca(ev){
+  const ls=DB.escalas.filter(a=>a.eventoId===ev.id&&a.pessoaId&&vejoNoCheckin(a));
+  const cheg=ls.filter(a=>a.chegou), atr=cheg.filter(atrasou), sai=ls.filter(a=>a.saiu);
+  const passado=ev.data<hojeIso();
+  const serv=sai.map(tempoServido).filter(x=>x!=null);
+  return{n:ls.length,cheg:cheg.length,atr:atr.length,sai:sai.length,
+    faltas:passado?ls.length-cheg.length:0,passado,
+    mediaAtraso:atr.length?Math.round(atr.reduce((s,a)=>s+atrasoMin(a),0)/atr.length):0,
+    mediaServ:serv.length?Math.round(serv.reduce((s,x)=>s+x,0)/serv.length):0};
+}
+function cartaoPresencaCulto(ev){
+  if(!vejoPresenca()||!presencaPronta())return '';
+  const desde=checkinDesde();
+  if(!desde||ev.data<desde||ev.data>hojeIso())return '';
+  const r=resumoPresenca(ev); if(!r.n)return '';
+  return '<div class="sec-t">Presença</div><div class="card"><div class="row" onclick="detalhePresenca(\''+ev.id+'\')">'
+   +'<div class="grow"><div class="t">'+r.cheg+' de '+r.n+' chegaram'+(r.passado&&r.faltas?' · '+r.faltas+' faltaram':'')+'</div>'
+   +'<div class="s">'+(r.atr?r.atr+' atrasado(s), média de '+minTxt(r.mediaAtraso):'Ninguém atrasado')
+   +(r.sai?' · '+r.sai+' saíram'+(r.mediaServ?', serviram em média '+minTxt(r.mediaServ):''):'')+'</div></div>'
+   +'<span class="chev">&#8250;</span></div></div>';
+}
+function detalhePresenca(evId){
+  const ev=evento(evId); if(!ev)return;
+  const ordem={faltou:0,atrasado:1,aguardando:2,pontual:3};
+  const ls=DB.escalas.filter(a=>a.eventoId===evId&&a.pessoaId&&vejoNoCheckin(a))
+    .map(a=>({a,p:pessoa(a.pessoaId),t:team(a.teamId),f:funcao(a.teamId,a.funcaoId),s:situacaoEscala(a)})).filter(x=>x.p)
+    .sort((x,y)=>(ordem[x.s]-ordem[y.s])||x.p.nome.localeCompare(y.p.nome));
+  let h='<p class="sub" style="margin:0 0 12px;padding:0">'+esc(ev.titulo)+' · '+fmtLong(ev.data)+'</p><div class="card">';
+  ls.forEach(x=>{const a=x.a;
+    const st=x.s==='faltou'?'<span class="atraso">Faltou</span>'
+      :x.s==='aguardando'?'<span class="s">Não chegou</span>'
+      :'<span class="ck-st"><b>'+horaCurta(a.chegou)+(a.saiu?' – '+horaCurta(a.saiu):'')+'</b>'+rotuloAtraso(a)+'</span>';
+    h+='<div class="row" style="cursor:default"><div class="avatar">'+rosto(x.p)+'</div><div class="grow">'
+     +'<div class="t">'+esc(x.p.nome)+'</div><div class="s">'+esc(x.t?x.t.nome:'')+' · '+esc(x.f?x.f.nome:'')
+     +(a.saiu?' · serviu '+minTxt(tempoServido(a)):'')+'</div></div>'+st+'</div>';});
+  h+='</div>';
+  if(fazCheckin()&&ev.data>=hojeIso())h+='<div class="gap"></div><button onclick="closeSheet();go(\'checkin\',\''+evId+'\')">Abrir o check-in</button>';
+  openSheet('Presença',h,null);
+}
+
+/* ---------- historico e ranking ---------- */
+function statsPresenca(filtro,diasAtras){
+  const desde=checkinDesde(); if(!desde)return null;
+  const hoje=hojeIso();
+  let ini=desde;
+  if(diasAtras){const d=new Date();d.setDate(d.getDate()-diasAtras);const x=iso(d);if(x>ini)ini=x;}
+  const por={};
+  DB.escalas.forEach(a=>{
+    if(!a.pessoaId||(filtro&&!filtro(a)))return;
+    const ev=evento(a.eventoId); if(!ev||ev.data<ini||ev.data>hoje)return;
+    if(ev.data===hoje&&!a.chegou)return;          /* hoje ainda nao conta como falta */
+    const s=por[a.pessoaId]||(por[a.pessoaId]={pid:a.pessoaId,total:0,veio:0,atrasos:0,somaAtraso:0,faltas:0,lista:[]});
+    s.total++; s.lista.push({a,ev});
+    if(a.chegou){s.veio++; if(atrasou(a)){s.atrasos++;s.somaAtraso+=atrasoMin(a);}}
+    else s.faltas++;
+  });
+  Object.values(por).forEach(s=>{s.mediaAtraso=s.atrasos?Math.round(s.somaAtraso/s.atrasos):0;
+    s.lista.sort((x,y)=>y.ev.data.localeCompare(x.ev.data));});
+  return{desde:ini,por};
+}
+function cartaoHistoricoPessoa(p){
+  if(!vejoPresenca()||!presencaPronta())return '';
+  const st=statsPresenca(a=>a.pessoaId===p.id&&vejoNoCheckin(a));
+  const s=st&&st.por[p.id]; if(!s)return '';
+  let h='<div class="sec-t">Presença</div><div class="card ck-hist">'
+   +'<div class="ck-num dentro"><div><b>'+s.veio+'<small>/'+s.total+'</small></b><span>presenças</span></div>'
+   +'<div><b class="'+(s.atrasos?'atraso':'')+'">'+s.atrasos+'</b><span>atrasos'+(s.atrasos?' · média '+minTxt(s.mediaAtraso):'')+'</span></div>'
+   +'<div><b class="'+(s.faltas?'atraso':'')+'">'+s.faltas+'</b><span>faltas</span></div></div>';
+  s.lista.slice(0,8).forEach(x=>{const a=x.a, sit=situacaoEscala(a), f=funcao(a.teamId,a.funcaoId);
+    h+='<div class="row" style="cursor:default"><div class="grow"><div class="t">'+esc(x.ev.titulo)+'</div>'
+     +'<div class="s">'+fmt(x.ev.data)+' · '+esc(f?f.nome:'')+'</div></div>'
+     +(sit==='faltou'?'<span class="atraso">Faltou</span>'
+       :'<span class="ck-st"><b>'+horaCurta(a.chegou)+(a.saiu?' – '+horaCurta(a.saiu):'')+'</b>'+rotuloAtraso(a)+'</span>')+'</div>';});
+  h+='<div class="row" style="cursor:default"><div class="grow"><div class="s">Contando desde '+fmt(st.desde)
+   +', quando o check-in começou.</div></div></div></div>';
+  return h;
+}
+const RK={dias:30,equipe:null};
+function vPresenca(){
+  let h=voltarBar('Presença');
+  h+='<div class="pad"><p class="sub" style="padding:0;margin:0 0 12px">'
+   +'Quem está vindo, quem atrasa e quem falta, pelo check-in.</p></div>';
+  if(!vejoPresenca())return h+'<div class="empty">Sem acesso.</div>';
+  const eqs=DB.teams.filter(t=>fazCheckin()||noMeuEscopo(t.id));
+  h+='<div class="pad"><div class="chips">'+[[30,'30 dias'],[90,'90 dias'],[0,'Desde o início']].map(x=>
+     '<button class="chip'+(RK.dias===x[0]?' on':'')+'" onclick="RK.dias='+x[0]+';render()">'+x[1]+'</button>').join('')+'</div>'
+   +'<div class="chips">'+'<button class="chip'+(!RK.equipe?' on':'')+'" onclick="RK.equipe=null;render()">Todas as equipes</button>'
+   +eqs.map(t=>'<button class="chip'+(RK.equipe===t.id?' on':'')+'" onclick="RK.equipe=\''+t.id+'\';render()">'+esc(t.nome)+'</button>').join('')
+   +'</div></div>';
+  const st=statsPresenca(a=>vejoNoCheckin(a)&&(!RK.equipe||a.teamId===RK.equipe),RK.dias);
+  const ls=st?Object.values(st.por):[];
+  if(!ls.length)return h+'<div class="empty"><b>Sem dados ainda</b>Os números aparecem depois do primeiro culto com check-in.</div>';
+  const T=ls.reduce((o,s)=>{o.total+=s.total;o.veio+=s.veio;o.atr+=s.atrasos;o.f+=s.faltas;return o;},{total:0,veio:0,atr:0,f:0});
+  h+='<div class="ck-num">'
+   +'<div><b>'+Math.round(T.veio/T.total*100)+'<small>%</small></b><span>presença</span></div>'
+   +'<div><b>'+T.total+'</b><span>escalações</span></div>'
+   +'<div><b class="'+(T.atr?'atraso':'')+'">'+T.atr+'</b><span>atrasos</span></div>'
+   +'<div><b class="'+(T.f?'atraso':'')+'">'+T.f+'</b><span>faltas</span></div></div>';
+  const linha=(s,txt)=>{const p=pessoa(s.pid); if(!p)return '';
+    return '<div class="row" onclick="go(\'pessoa\',\''+s.pid+'\')"><div class="avatar">'+rosto(p)+'</div>'
+     +'<div class="grow"><div class="t">'+esc(p.nome)+'</div><div class="s">'+txt+'</div></div><span class="chev">&#8250;</span></div>';};
+  const falt=ls.filter(s=>s.faltas).sort((a,b)=>b.faltas-a.faltas||b.faltas/b.total-a.faltas/a.total).slice(0,10);
+  const atra=ls.filter(s=>s.atrasos).sort((a,b)=>b.atrasos-a.atrasos||b.mediaAtraso-a.mediaAtraso).slice(0,10);
+  const pont=ls.filter(s=>s.total>=2&&!s.faltas&&!s.atrasos).sort((a,b)=>b.total-a.total).slice(0,10);
+  h+='<div class="sec-t">Mais faltas</div><div class="card">'
+   +(falt.length?falt.map(s=>linha(s,s.faltas+' falta(s) em '+s.total+' escala(s)')).join(''):'<div class="empty">Ninguém faltou.</div>')+'</div>';
+  h+='<div class="sec-t">Mais atrasos</div><div class="card">'
+   +(atra.length?atra.map(s=>linha(s,s.atrasos+' atraso(s) · média de '+minTxt(s.mediaAtraso))).join(''):'<div class="empty">Ninguém atrasou.</div>')+'</div>';
+  if(pont.length)h+='<div class="sec-t">Sempre no horário</div><div class="card">'
+   +pont.map(s=>linha(s,s.total+' de '+s.total+' no horário')).join('')+'</div>';
+  h+='<p class="sub" style="font-size:13px">Contando desde '+fmt(st.desde)+'. Atraso é chegar mais de '
+   +TOLERANCIA_MIN+' minutos depois do horário de chegada da equipe.</p>';
+  return h;
+}
+
 const podeFoto=()=>!naNuvemFn()||FOTO_NUVEM;
 function naNuvemFn(){try{return typeof naNuvem==='function'&&naNuvem();}catch(e){return false;}}
 function podeMexerNaFoto(p){return !!p&&(p.id===DB.sessao||euPossoPessoa('pessoas',p));}
