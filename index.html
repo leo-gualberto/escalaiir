@@ -642,6 +642,10 @@ body button.ck-bt.sai{background:var(--fill,#E9E9EE);color:var(--brand)}
 .ck-st.feito b,.ck-st.feito span{color:var(--muted)}
 .ck-row .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ck-linha{font-size:13px;color:var(--muted);margin-top:1px}
+.chave{flex:none;width:51px;height:31px;border-radius:99px;background:var(--fill,#E9E9EA);position:relative;transition:background .2s}
+.chave i{position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:transform .2s}
+.chave.on{background:#34C759}
+.chave.on i{transform:translateX(20px)}
 .cal .d{position:relative}
 body .cal .d.meio{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px var(--line-forte);outline:1.5px dashed var(--card);outline-offset:-3px}
 .cal .d small{position:absolute;left:0;right:0;bottom:3px;text-align:center;font-size:8.5px;font-weight:700;line-height:1;color:var(--muted);letter-spacing:.5px}
@@ -1202,8 +1206,14 @@ function mapaCarga(corte,ciclo){
   });
   return{total,janela,ultima,mes};
 }
+/* Fora da escala: a pessoa continua na equipe (ve a escala, recebe os
+   avisos da equipe), mas a escala automatica e as trocas nao contam com ela
+   ali. O lider ainda pode escalar na mao, com confirmacao. */
+var FORA_NUVEM=false;
+const foraProntos=()=>!naNuvemFn()||FORA_NUVEM;
+const foraDaEscala=(p,tid)=>!!(p&&Array.isArray(p.foraEscala)&&p.foraEscala.indexOf(tid)>=0);
 function candidatos(ev,tid,fid){
-  return DB.pessoas.filter(p=>p.teamIds.includes(tid)&&p.funcaoIds.includes(fid)&&!ausente(p.id,ev.data,ev.hora));
+  return DB.pessoas.filter(p=>p.teamIds.includes(tid)&&p.funcaoIds.includes(fid)&&!ausente(p.id,ev.data,ev.hora)&&!foraDaEscala(p,tid));
 }
 /* Emparelhamento maximo (algoritmo de Kuhn) para nao "desperdicar" especialistas:
    quem so toca teclado nao e gasto numa vaga de vocal. A ordem de preferencia
@@ -2133,11 +2143,12 @@ function escolher(evId,tid,fid,idx){
   h+='<div class="card" id="listaEscolher" style="margin:0">';
   let n=0;
   aptos.forEach(p=>{
-    const ind=ausente(p.id,ev.data,ev.hora), dup=usados.includes(p.id);
+    const fora=foraDaEscala(p,tid), ind=ausente(p.id,ev.data,ev.hora)||fora, dup=usados.includes(p.id);
     if(atual&&p.id===atual.pessoaId)return;
     n++;
     const noMes=mc.mes[p.id]||0;
-    const tag=ind?'<span class="pill bad">'+esc(motivoAusencia(p.id,ev.data)||'Indisponivel')+'</span>':dup?'<span class="pill warn">Já escalado</span>'
+    const tag=fora?'<span class="pill mut">Fora da escala</span>'
+      :ind?'<span class="pill bad">'+esc(motivoAusencia(p.id,ev.data,ev.hora)||'Indisponivel')+'</span>':dup?'<span class="pill warn">Já escalado</span>'
       :'<span class="pill '+(noMes?'mut':'ok')+'">'+noMes+'x no mês</span>';
     h+='<div class="row" data-busca="'+esc(p.nome)+'" '
       +'onclick="definirUI(\''+evId+'\',\''+tid+'\',\''+fid+'\','+idx+',\''+p.id+'\')">'
@@ -2152,6 +2163,7 @@ function definirUI(evId,tid,fid,idx,pid){
   if(!exigeEquipe('escalas',tid))return;
   const ev=evento(evId);
   if(pid&&ausente(pid,ev.data,ev.hora)&&!confirm(pessoa(pid).nome+' está indisponível ('+motivoAusencia(pid,ev.data,ev.hora)+'). Escalar mesmo assim?'))return;
+  if(pid&&foraDaEscala(pessoa(pid),tid)&&!confirm(pessoa(pid).nome+' está fora da escala de '+(team(tid)||{}).nome+'. Escalar mesmo assim?'))return;
   definir(ev,tid,fid,idx,pid||null);closeSheet();render();
 }
 function marcar(aid,st){const a=DB.escalas.find(x=>x.id===aid);if(a){a.status=st;save();}closeSheet();render();}
@@ -2363,7 +2375,8 @@ function vEquipe(id){
     +(possoMexerNaEquipe(t.id)?' Toque em <b>+ Adicionar</b> para trazer quem já está no app.':'')+'</div>';
   membros.forEach(p=>{h+='<div class="row" onclick="go(\'pessoa\',\''+p.id+'\')">'
     +'<div class="avatar">'+rosto(p)+'</div><div class="grow"><div class="t">'+esc(p.nome)+'</div>'
-    +'<div class="s">'+esc(p.funcaoIds.map(fid=>{const f=t.funcoes.find(x=>x.id===fid);return f&&f.nome;}).filter(Boolean).join(', ')||'sem função')+'</div></div>'
+    +'<div class="s">'+esc(p.funcaoIds.map(fid=>{const f=t.funcoes.find(x=>x.id===fid);return f&&f.nome;}).filter(Boolean).join(', ')||'sem função')
+    +(foraDaEscala(p,t.id)?' · <b style="color:var(--warn)">fora da escala</b>':'')+'</div></div>'
     +'<span class="chev">&#8250;</span></div>';});
   h+='</div><div class="gap"></div><div class="pad">'
    +'<button class="btn2" onclick="editarEquipe(\''+t.id+'\')">Editar equipe</button><div class="gap"></div>'
@@ -2528,7 +2541,8 @@ function vPessoa(id){
     h+='<div class="row" '+(mexe?'onclick="equipeDaPessoaUI(\''+p.id+'\',\''+t.id+'\')"':'style="cursor:default"')+'>'
      +'<div class="avatar" style="background:'+t.cor+'22;color:'+t.cor+'">'
      +esc(ini(t.nome))+'</div><div class="grow"><div class="t">'+esc(t.nome)+'</div>'
-     +'<div class="s">'+esc(fs.join(', ')||'sem função definida')+'</div></div>'
+     +'<div class="s">'+esc(fs.join(', ')||'sem função definida')
+     +(foraDaEscala(p,t.id)?' · <b style="color:var(--warn)">fora da escala</b>':'')+'</div></div>'
      +(mexe?'<span class="chev">&#8250;</span>':'')+'</div>';});
   if(!p.externa&&DB.teams.some(t=>!p.teamIds.includes(t.id)&&possoMexerNaEquipe(t.id)))
     h+='<div class="row" onclick="adicionarAEquipeUI(\''+p.id+'\')"><div class="avatar" style="background:var(--fill);color:var(--brand)">'
@@ -2692,6 +2706,7 @@ function mudarFuncoesNaEquipe(pid,tid,fids){
   const daEquipe=t.funcoes.map(f=>f.id);
   p.funcaoIds=[...new Set(p.funcaoIds.filter(f=>daEquipe.indexOf(f)<0).concat(fids))];
   p.teamIds=[...new Set(p.teamIds.filter(x=>x!==tid).concat(fids.length?[tid]:[]))];
+  if(!fids.length&&Array.isArray(p.foraEscala))p.foraEscala=p.foraEscala.filter(x=>x!==tid);
   save();
 }
 function equipeDaPessoaUI(pid,tid){
@@ -2708,6 +2723,12 @@ function equipeDaPessoaUI(pid,tid){
        +'onclick="this.classList.toggle(\'on\')">'+esc(f.nome)+'</button>').join('')+'</div>'
      +'<p class="sub" style="font-size:13px;margin:0;padding:0">Marque uma ou mais. A escala automática só põe '
      +nome+' nas funções marcadas.</p>';
+  if(membro&&foraProntos()){const fora=foraDaEscala(p,tid);
+    h+='<div class="card" style="margin:16px 0 0"><div class="row" onclick="alternarForaEscala(\''+pid+'\',\''+tid+'\')">'
+     +'<div class="grow"><div class="t">Disponível para ser escalado</div>'
+     +'<div class="s">'+(fora?'Desligado: continua na equipe, mas a escala automática e as trocas não contam com '+nome+'.'
+       :'Ligado: entra na escala automática e pode assumir trocas.')+'</div></div>'
+     +'<span class="chave'+(fora?'':' on')+'" role="switch" aria-checked="'+(!fora)+'"><i></i></span></div></div>';}
   if(membro)h+='<div class="gap"></div><button class="btn2 btn-d" onclick="tirarDaEquipe(\''+pid+'\',\''+tid+'\')">'
     +'Tirar '+nome+' de '+esc(t.nome)+'</button>';
   openSheet(membro?t.nome:'Adicionar a '+t.nome,h,t.funcoes.length?()=>{
@@ -2715,6 +2736,14 @@ function equipeDaPessoaUI(pid,tid){
     mudarFuncoesNaEquipe(pid,tid,fids); render();
     toast(membro?'Funções atualizadas':p.nome.split(' ')[0]+' agora está em '+t.nome);
   }:null);
+}
+function alternarForaEscala(pid,tid){
+  const p=pessoa(pid), t=team(tid); if(!p||!t||!exigeEquipe('pessoas',tid))return;
+  const ls=(p.foraEscala||[]).filter(x=>x!==tid);
+  const sai=!foraDaEscala(p,tid);
+  p.foraEscala=sai?ls.concat([tid]):ls; save(); render();
+  equipeDaPessoaUI(pid,tid);
+  toast(sai?p.nome.split(' ')[0]+' fora da escala de '+t.nome:p.nome.split(' ')[0]+' de volta à escala de '+t.nome);
 }
 function tirarDaEquipe(pid,tid){
   const p=pessoa(pid), t=team(tid); if(!p||!t||!exigeEquipe('pessoas',tid))return;
@@ -3348,6 +3377,7 @@ function podeAssumir(t,pid){
   const p=pessoa(pid);
   if(!p||pid===a.pessoaId)return false;
   if(!p.funcaoIds.includes(a.funcaoId))return false;              // precisa saber a funcao
+  if(foraDaEscala(p,a.teamId))return false;                         // fora da escala da equipe
   if(ausente(pid,ev.data,ev.hora))return false;                            // nao pode na data
   if(DB.escalas.some(x=>x.eventoId===ev.id&&x.pessoaId===pid))return false; // ja serve no culto
   return true;
@@ -3614,6 +3644,7 @@ function achatar(db){
       email:p.email||null,nascimento:p.nascimento||null,codigo:p.codigo};
     if(mandaPerms)lin.perms=p.perms||{};
     if(FOTO_NUVEM)lin.foto=p.foto||null;
+    if(FORA_NUVEM)lin.fora_da_escala=p.foraEscala||[];
     perfis.push(lin);
     (p.funcaoIds||[]).forEach(fid=>habilidades.push({perfil_id:p.id,funcao_id:fid}));
   });
@@ -3661,6 +3692,7 @@ function montar(dados){
      migracao-foto-perfil.sql). Enviar antes derrubaria a gravacao inteira,
      como ja aconteceu com o status "expirada". */
   FOTO_NUVEM=(dados.perfis||[]).some(r=>r&&Object.prototype.hasOwnProperty.call(r,'foto'));
+  FORA_NUVEM=(dados.perfis||[]).some(r=>r&&Object.prototype.hasOwnProperty.call(r,'fora_da_escala'));
   /* mesma regra da foto: a hora de chegada so sobe quando o banco tem a coluna */
   CHEGADA_NUVEM=(dados.escalas||[]).some(r=>r&&Object.prototype.hasOwnProperty.call(r,'chegou_em'));
   SAIDA_NUVEM=(dados.escalas||[]).some(r=>r&&Object.prototype.hasOwnProperty.call(r,'saiu_em'));
@@ -3668,6 +3700,7 @@ function montar(dados){
     const fids=habs[p.id]||[];
     return{id:p.id,nome:p.nome,telefone:p.telefone||'',email:p.email||'',
       nascimento:p.nascimento||'',codigo:p.codigo,perms:p.perms||{},foto:p.foto||'',
+      foraEscala:Array.isArray(p.fora_da_escala)?p.fora_da_escala:[],
       entrou:p.entrou_em||null,funcaoIds:fids,
       /* quem manda na validade do codigo e o banco: o app so mostra */
       codigoExpira:p.codigo_expira_em||null,codigoUsos:p.codigo_usos||0,

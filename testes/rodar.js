@@ -705,6 +705,15 @@ teste('a foto não sobe enquanto o banco não tem a coluna, e sobe depois', () =
   app.montar({ perfis: [] });
 });
 
+teste('quem está fora da escala de uma equipe não entra na escala automática', () => {
+  const db = usar(mundo());
+  const bia = db.pessoas.find(p => p.id === BIA);
+  const tid = bia.teamIds[0], fid = bia.funcaoIds[0], ev = db.eventos[0];
+  ok(app.candidatos(ev, tid, fid).some(p => p.id === BIA), 'antes, é candidata');
+  bia.foraEscala = [tid];
+  ok(!app.candidatos(ev, tid, fid).some(p => p.id === BIA), 'fora da escala, não é');
+});
+
 /* ---------- execução ---------- */
 for (const [nome, fn] of casos) {
   try { fn(); passou++; console.log('  ok   ' + nome); }

@@ -32,6 +32,7 @@ senão a sincronização daquela tabela para. O próprio app avisa em
 | `migracoes/migracao-presenca-fotos-agenda.sql` | Presença no dia (`escalas.chegou_em`), foto dos colegas, desligar a agenda e aviso ao líder de quem não confirmou |
 | `migracoes/migracao-equipe-checkin.sql` | Equipe de check-in: `saiu_em`, `presenca_por`, permissão `es_checkin` e trava de presença |
 | `migracoes/migracao-indisponibilidade-por-turno.sql` | Bloqueio por turno (`indisponibilidades.turnos`), regra `bloqueou()` nas trocas |
+| `migracoes/migracao-fora-da-escala.sql` | Fora da escala por equipe (`perfis.fora_da_escala`), respeitado nas trocas |
 | `migracoes/correcao-agenda-token.sql` | conserta a geração do token da agenda do celular: `gen_random_bytes` mora em `extensions`, não em `public` |
 | `migracoes/migracao-codigos-acesso.sql` | contagem de uso do código, `novo_codigo()` e `revogar_acessos()` (v1.3). Código não vence: a coluna de validade existe, mas só é usada se alguém chamar `novo_codigo(perfil, dias)` |
 
