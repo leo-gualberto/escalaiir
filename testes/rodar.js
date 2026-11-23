@@ -599,11 +599,20 @@ function mundoComProjecao() {
   return db;
 }
 
-teste('líder sem equipes marcadas vale para a igreja inteira', () => {
+teste('líder sem equipes marcadas escala só a equipe em que serve; o resto vale para a igreja', () => {
+  const db = usar(mundoComProjecao());
+  const bia = db.pessoas.find(p => p.id === BIA);   // serve só no Louvor
+  bia.perms = { escalas: true, pessoas: true };
+  igual(app.escopoDe(bia), null);
+  ok(app.podeEquipe(bia, 'escalas', T1), 'escala o Louvor');
+  ok(!app.podeEquipe(bia, 'escalas', T2), 'não escala a Projeção');
+  ok(app.podeEquipe(bia, 'pessoas', T2), 'cadastros continuam valendo para a igreja');
+});
+
+teste('quem não serve em equipe nenhuma escala todas', () => {
   const db = usar(mundoComProjecao());
   const bia = db.pessoas.find(p => p.id === BIA);
-  bia.perms = { escalas: true };
-  igual(app.escopoDe(bia), null);
+  bia.perms = { escalas: true }; bia.teamIds = []; bia.funcaoIds = [];
   ok(app.podeEquipe(bia, 'escalas', T1) && app.podeEquipe(bia, 'escalas', T2));
 });
 
@@ -615,12 +624,25 @@ teste('líder de uma equipe só escala a própria equipe', () => {
   ok(!app.podeEquipe(duda, 'trocas', T2), 'sem a permissão, o escopo não concede nada');
 });
 
-teste('administrador nunca fica preso a um escopo', () => {
+teste('no administrador, as equipes marcadas valem só para montar a escala', () => {
   const db = usar(mundoComProjecao());
   const ana = db.pessoas.find(p => p.id === ANA);
   ana.perms = { admin: true, escopo: [T2] };
   igual(app.escopoDe(ana), null);
-  ok(app.podeEquipe(ana, 'escalas', T1));
+  ok(app.podeEquipe(ana, 'escalas', T2), 'escala a Projeção');
+  ok(!app.podeEquipe(ana, 'escalas', T1), 'não escala o Louvor');
+  ok(app.podeEquipe(ana, 'pessoas', T1), 'o resto continua geral');
+});
+
+teste('bloqueio por turno: manhã não impede o culto da noite', () => {
+  const db = usar(mundo());
+  db.indisp.push({ pessoaId: BIA, data: '2027-05-02', turnos: 'manha' });
+  ok(app.indisponivel(BIA, '2027-05-02', '09:00'), 'culto das 9h bloqueado');
+  ok(!app.indisponivel(BIA, '2027-05-02', '19:00'), 'culto das 19h livre');
+  ok(!app.indisponivel(BIA, '2027-05-02'), 'sem hora, só o dia todo conta');
+  db.indisp.push({ pessoaId: CAIO, data: '2027-05-02', turnos: null });
+  ok(app.indisponivel(CAIO, '2027-05-02', '19:00') && app.indisponivel(CAIO, '2027-05-02'), 'dia todo');
+  igual(app.turnoDaHora('11:59'), 'manha'); igual(app.turnoDaHora('12:00'), 'tarde'); igual(app.turnoDaHora('18:00'), 'noite');
 });
 
 teste('líder de equipe só mexe em quem é da equipe dele', () => {

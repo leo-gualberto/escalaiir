@@ -642,6 +642,12 @@ body button.ck-bt.sai{background:var(--fill,#E9E9EE);color:var(--brand)}
 .ck-st.feito b,.ck-st.feito span{color:var(--muted)}
 .ck-row .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ck-linha{font-size:13px;color:var(--muted);margin-top:1px}
+.cal .d{position:relative}
+body .cal .d.meio{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px var(--line-forte);outline:1.5px dashed var(--card);outline-offset:-3px}
+.cal .d small{position:absolute;left:0;right:0;bottom:3px;text-align:center;font-size:8.5px;font-weight:700;line-height:1;color:var(--muted);letter-spacing:.5px}
+.row.turno .marca{color:var(--brand);opacity:0;display:flex}
+.row.turno.on .marca{opacity:1}
+.row.turno.on .t{color:var(--brand);font-weight:600}
 .ck-ok{color:var(--ok);display:flex;flex:none;margin-right:6px}
 body .slot .chegou{order:-1}
 .capsulas .cap{flex:1}
@@ -885,9 +891,20 @@ function escopoDe(p){
   const e=p.perms.escopo;
   return Array.isArray(e)&&e.length?e:null;
 }
+/* Montar escala e de quem lidera a equipe. Com equipes marcadas nas
+   permissoes, valem essas; sem nenhuma, valem as equipes em que a propria
+   pessoa serve — inclusive para o administrador. So quem nao serve em
+   equipe nenhuma (e nao tem nenhuma marcada) monta a escala de todas. */
+function escopoEscalaDe(p){
+  if(!p||!p.perms)return null;
+  const e=p.perms.escopo; if(Array.isArray(e)&&e.length)return e;
+  const ts=(p.teamIds||[]).filter(t=>DB.teams.some(x=>x.id===t));
+  return ts.length?ts:null;
+}
+const meuEscopoEscala=()=>escopoEscalaDe(souEu());
 function podeEquipe(p,k,tid){
   if(!pode(p,k))return false;
-  const e=escopoDe(p);
+  const e=k==='escalas'?escopoEscalaDe(p):escopoDe(p);
   return !e||(!!tid&&e.indexOf(tid)>=0);
 }
 /* Uma pessoa esta no meu escopo se estiver em alguma das minhas equipes. Quem
@@ -932,7 +949,7 @@ function pessoasNoEscopo(){
 }
 /* o mesmo que statusEvento, contando so as equipes de quem esta olhando */
 function statusEscopo(ev){
-  const e=meuEscopo(); if(!e)return statusEvento(ev);
+  const e=meuEscopoEscala(); if(!e)return statusEvento(ev);
   const total=slotsDoEvento(ev).filter(x=>e.indexOf(x.teamId)>=0).length;
   const chk=DB.escalas.filter(a=>a.eventoId===ev.id&&e.indexOf(a.teamId)>=0);
   return{total,preenchidos:chk.length,confirmados:chk.filter(a=>a.status==='confirmado').length,
@@ -1061,13 +1078,34 @@ const pessoa=id=>DB.pessoas.find(p=>p.id===id);
 const evento=id=>DB.eventos.find(e=>e.id===id);
 function funcao(tid,fid){const t=team(tid);return t&&t.funcoes.find(f=>f.id===fid);}
 const eu=()=>pessoa(DB.meuId);
-function indisponivel(pid,data){return DB.indisp.some(i=>i.pessoaId===pid&&i.data===data);}
+/* Bloqueio de um dia: o dia todo (turnos vazio) ou so alguns turnos —
+   "manha", "tarde", "noite", separados por virgula. O turno de um culto vem
+   da hora de inicio: antes das 12h e manha, ate 18h e tarde, depois e noite. */
+const TURNOS=[['manha','Manhã','antes das 12h'],['tarde','Tarde','das 12h às 18h'],['noite','Noite','a partir das 18h']];
+var TURNO_NUVEM=false;
+const turnosProntos=()=>!naNuvemFn()||TURNO_NUVEM;
+function turnoDaHora(h){const x=String(h||'19:00').slice(0,5);return x<'12:00'?'manha':x<'18:00'?'tarde':'noite';}
+const bloqueioDe=(pid,data)=>DB.indisp.find(i=>i.pessoaId===pid&&i.data===data);
+const turnosDe=b=>b&&b.turnos?String(b.turnos).split(',').filter(Boolean):[];
+/* sem hora: so conta o bloqueio do dia todo. Com hora: conta o turno do culto. */
+function indisponivel(pid,data,hora){
+  const b=bloqueioDe(pid,data); if(!b)return false;
+  const ts=turnosDe(b); if(!ts.length)return true;
+  return hora!=null&&ts.indexOf(turnoDaHora(hora))>=0;
+}
+function textoTurnos(b){
+  const ts=turnosDe(b); if(!ts.length)return 'o dia todo';
+  const n=TURNOS.filter(t=>ts.indexOf(t[0])>=0).map(t=>t[1].toLowerCase());
+  return 'só '+(n.length>1?n.slice(0,-1).join(', ')+' e '+n[n.length-1]:n[0]);
+}
 /* ausencia = periodo bloqueado com motivo (viagem, saude, trabalho...) */
 function ausenciaEm(pid,data){return DB.ausencias.find(a=>a.pessoaId===pid&&data>=a.inicio&&data<=a.fim);}
-function ausente(pid,data){return indisponivel(pid,data)||!!ausenciaEm(pid,data);}
-function motivoAusencia(pid,data){
+function ausente(pid,data,hora){return indisponivel(pid,data,hora)||!!ausenciaEm(pid,data);}
+function motivoAusencia(pid,data,hora){
   const a=ausenciaEm(pid,data);
-  return a?(a.motivo||'período bloqueado'):(indisponivel(pid,data)?'dia marcado':'');
+  if(a)return a.motivo||'período bloqueado';
+  const b=bloqueioDe(pid,data);
+  return indisponivel(pid,data,hora)?(turnosDe(b).length?'marcou que não pode '+textoTurnos(b).replace('só ','de '):'dia marcado'):'';
 }
 const diasDoPeriodo=(i,f)=>Math.round((pd(f)-pd(i))/86400000)+1;
 function diasBloqueados(pid,ano){
@@ -1165,7 +1203,7 @@ function mapaCarga(corte,ciclo){
   return{total,janela,ultima,mes};
 }
 function candidatos(ev,tid,fid){
-  return DB.pessoas.filter(p=>p.teamIds.includes(tid)&&p.funcaoIds.includes(fid)&&!ausente(p.id,ev.data));
+  return DB.pessoas.filter(p=>p.teamIds.includes(tid)&&p.funcaoIds.includes(fid)&&!ausente(p.id,ev.data,ev.hora));
 }
 /* Emparelhamento maximo (algoritmo de Kuhn) para nao "desperdicar" especialistas:
    quem so toca teclado nao e gasto numa vaga de vocal. A ordem de preferencia
@@ -1884,7 +1922,7 @@ function vEvento(id){
    menu. Excluir sai da tela e entra no menu, onde nao se toca sem querer. */
 function acoesEvento(ev,s){
   const a=[];
-  const se=statusEscopo(ev), meu=meuEscopo();
+  const se=statusEscopo(ev), meu=meuEscopoEscala();
   if(euPosso('escalas')&&se.preenchidos<se.total)
     a.push([meu?'Escalar '+nomesEscopo(meu):'Escalar automático',"autoEscalar('"+ev.id+"')"]);
   if(euPosso('escalas')&&(!meu||se.total)){
@@ -2021,7 +2059,7 @@ function editarInfoCulto(evId){
 }
 
 function autoEscalar(id){if(!exige('escalas'))return;const ev=evento(id);
-  const meu=meuEscopo();
+  const meu=meuEscopoEscala();
   const jaTem=DB.escalas.some(a=>a.eventoId===ev.id&&(!meu||meu.indexOf(a.teamId)>=0));
   if(jaTem&&!confirm(meu?'Refazer a escala de '+nomesEscopo(meu)+' neste culto?'
     :'Refazer a escala inteira deste evento?')){gerarEscala(ev,false,meu);render();return;}
@@ -2095,7 +2133,7 @@ function escolher(evId,tid,fid,idx){
   h+='<div class="card" id="listaEscolher" style="margin:0">';
   let n=0;
   aptos.forEach(p=>{
-    const ind=ausente(p.id,ev.data), dup=usados.includes(p.id);
+    const ind=ausente(p.id,ev.data,ev.hora), dup=usados.includes(p.id);
     if(atual&&p.id===atual.pessoaId)return;
     n++;
     const noMes=mc.mes[p.id]||0;
@@ -2113,7 +2151,7 @@ function escolher(evId,tid,fid,idx){
 function definirUI(evId,tid,fid,idx,pid){
   if(!exigeEquipe('escalas',tid))return;
   const ev=evento(evId);
-  if(pid&&ausente(pid,ev.data)&&!confirm(pessoa(pid).nome+' está indisponível ('+motivoAusencia(pid,ev.data)+'). Escalar mesmo assim?'))return;
+  if(pid&&ausente(pid,ev.data,ev.hora)&&!confirm(pessoa(pid).nome+' está indisponível ('+motivoAusencia(pid,ev.data,ev.hora)+'). Escalar mesmo assim?'))return;
   definir(ev,tid,fid,idx,pid||null);closeSheet();render();
 }
 function marcar(aid,st){const a=DB.escalas.find(x=>x.id===aid);if(a){a.status=st;save();}closeSheet();render();}
@@ -2543,7 +2581,8 @@ function calendario(pid){
   for(let i=0;i<pre;i++)h+='<div class="d off"></div>';
   for(let d=1;d<=dias;d++){const s=iso(new Date(y,m,d));
     const au=ausenciaEm(pid,s), esca=escDias[s];
-    const cls=['d',esca?'esc':'',indisponivel(pid,s)?'no':'',au?'aus':'',
+    const bl=bloqueioDe(pid,s), parcial=bl&&turnosDe(bl).length;
+    const cls=['d',esca?'esc':'',bl&&!parcial?'no':'',parcial?'meio':'',au?'aus':'',
       (evDatas.has(s)&&!esca)?'ev':''].filter(Boolean).join(' ');
     /* escalado tem prioridade no toque: em vez de marcar indisponivel sem
        querer, a pessoa ve o que vai fazer naquele dia */
@@ -2551,15 +2590,17 @@ function calendario(pid){
     const acao=esca||au
       ?'toast(\''+esc(aviso).replace(/'/g,'').replace(/\\/g,'')+'\')'
       :'toggleInd(\''+pid+'\',\''+s+'\')';
-    h+='<div class="'+cls+'" title="'+esc(aviso)+'" onclick="'+acao+'">'+d+'</div>';}
+    const marca=parcial?'<small>'+TURNOS.filter(t=>turnosDe(bl).indexOf(t[0])>=0).map(t=>t[1][0]).join('')+'</small>':'';
+    h+='<div class="'+cls+'" title="'+esc(aviso)+'" onclick="'+acao+'">'+d+marca+'</div>';}
   h+='</div><div class="legenda">'
    +'<span><i style="background:var(--brand);border-color:var(--brand)"></i>escalado</span>'
-   +'<span><i style="background:transparent;border-color:transparent;box-shadow:inset 0 0 0 2px var(--line-forte)"></i>não pode (dia avulso)</span>'
+   +'<span><i style="background:transparent;border-color:transparent;box-shadow:inset 0 0 0 2px var(--line-forte)"></i>não pode (dia todo)</span>'
+   +'<span><i style="background:transparent;border:1.5px dashed var(--line-forte)"></i>não pode num turno (M, T, N)</span>'
    +'<span><i style="background:repeating-linear-gradient(45deg,var(--line-forte),var(--line-forte) 3px,'
    +'transparent 3px,transparent 7px);border-color:var(--line-forte)"></i>período bloqueado</span>'
    +'<span><i style="box-shadow:inset 0 -3px 0 var(--brand)"></i>há culto no dia</span></div>'
    +'<div style="font-size:12px;color:var(--muted);margin-top:8px">Toque num dia livre para marcar que '
-   +'<b>não</b> pode servir. Tocar num dia azul mostra a escala daquele dia.</div></div>';
+   +'<b>não</b> pode servir: o dia todo, ou só de manhã, de tarde ou de noite. Tocar num dia azul mostra a escala daquele dia.</div></div>';
   return h;
 }
 /* Escalado num dia que a propria pessoa marcou como indisponivel. Acontece
@@ -2568,7 +2609,7 @@ function calendario(pid){
 function conflitosEscala(){
   return DB.escalas.filter(a=>{
     const e=evento(a.eventoId);
-    return e&&e.data>=hojeIso()&&pessoa(a.pessoaId)&&ausente(a.pessoaId,e.data);
+    return e&&e.data>=hojeIso()&&pessoa(a.pessoaId)&&ausente(a.pessoaId,e.data,e.hora);
   }).sort((x,y)=>evento(x.eventoId).data.localeCompare(evento(y.eventoId).data));
 }
 function verConflitos(){
@@ -2585,14 +2626,51 @@ function verConflitos(){
      +'<div class="grow"><div class="t">'+esc(p.nome)+'</div>'
      +'<div class="s">'+esc(f?f.nome:'')+' &middot; '+esc(e.titulo)+' &middot; '+fmt(e.data)+'</div>'
      +'<div class="s" style="color:var(--warn);font-weight:600">'
-     +esc(au?au.motivo:'marcou que não pode neste dia')+'</div></div>'
+     +esc(au?au.motivo:motivoAusencia(p.id,e.data,e.hora))+'</div></div>'
      +'<span class="chev">&#8250;</span></div>';});
   openSheet('Conflitos na escala',h+'</div>',null);
 }
+/* Tocar num dia abre a escolha: o dia todo ou so um turno. Antes da
+   atualizacao do banco (TURNO_NUVEM), so existe o dia todo, como antes. */
 function toggleInd(pid,data){
-  const i=DB.indisp.findIndex(x=>x.pessoaId===pid&&x.data===data);
-  if(i>=0)DB.indisp.splice(i,1); else DB.indisp.push({pessoaId:pid,data});
-  save();render();
+  if(!turnosProntos()){
+    const i=DB.indisp.findIndex(x=>x.pessoaId===pid&&x.data===data);
+    if(i>=0)DB.indisp.splice(i,1); else DB.indisp.push({pessoaId:pid,data});
+    save();render();return;
+  }
+  const b=bloqueioDe(pid,data), ts=turnosDe(b), todo=b&&!ts.length;
+  const cultos=DB.eventos.filter(e=>e.data===data).sort((x,y)=>String(x.hora).localeCompare(String(y.hora)));
+  const op=(k,t,sub,on)=>'<div class="row turno'+(on?' on':'')+'" data-k="'+k+'" onclick="marcarTurno(this)">'
+    +'<div class="grow"><div class="t">'+t+'</div><div class="s">'+sub+'</div></div>'
+    +'<span class="marca">'+ico('check',18)+'</span></div>';
+  let h='<p class="sub" style="margin:0 0 12px;padding:0">Quando você <b>não</b> pode servir neste dia?</p>'
+   +'<div class="card" style="margin:0 0 12px" id="turnosDia">'
+   +op('dia','O dia todo','Não me escale em nenhum culto',todo)
+   +TURNOS.map(t=>op(t[0],'Só '+t[1].toLowerCase(),t[2]
+      +(cultos.filter(e=>turnoDaHora(e.hora)===t[0]).map(e=>' · '+esc(e.titulo)+' '+esc(e.hora)).join('')),
+      ts.indexOf(t[0])>=0)).join('')+'</div>';
+  if(cultos.length)h+='<p class="sub" style="font-size:13px;margin:0 0 12px;padding:0">Cultos neste dia: '
+    +cultos.map(e=>esc(e.titulo)+' às '+esc(e.hora)).join(', ')+'.</p>';
+  if(b)h+='<button class="btn2 btn-d" onclick="liberarDia(\''+pid+'\',\''+data+'\')">Posso servir neste dia</button>';
+  openSheet(fmtLong(data),h,()=>{
+    const sel=[...document.querySelectorAll('#turnosDia .turno.on')].map(r=>r.dataset.k);
+    if(!sel.length){liberarDia(pid,data,true);return;}
+    let turnos=sel.indexOf('dia')>=0?null:sel.filter(k=>k!=='dia');
+    if(turnos&&turnos.length===TURNOS.length)turnos=null;
+    const ex=bloqueioDe(pid,data), val=turnos?TURNOS.map(t=>t[0]).filter(k=>turnos.indexOf(k)>=0).join(','):null;
+    if(ex)ex.turnos=val; else DB.indisp.push({pessoaId:pid,data,turnos:val});
+    save();render();toast('Marcado: não pode '+textoTurnos({turnos:val}).replace('só ','de '));
+  });
+}
+function marcarTurno(el){
+  const box=document.getElementById('turnosDia'); if(!box)return;
+  const dia=el.dataset.k==='dia';
+  if(dia){const on=!el.classList.contains('on');box.querySelectorAll('.turno').forEach(r=>r.classList.remove('on'));if(on)el.classList.add('on');}
+  else{el.classList.toggle('on');const d=box.querySelector('[data-k="dia"]');if(d)d.classList.remove('on');}
+}
+function liberarDia(pid,data,quieto){
+  DB.indisp=DB.indisp.filter(x=>!(x.pessoaId===pid&&x.data===data));
+  save();if(!quieto)closeSheet();render();toast('Dia liberado');
 }
 function formPessoa(p){
   let h='<label>Nome</label><input id="pNome" value="'+esc(p?p.nome:'')+'" placeholder="Maria Silva">'
@@ -2663,17 +2741,17 @@ function editarPerms(id){
      +DB.teams.map(t=>'<button class="chip'+(atuais.indexOf(t.id)>=0?' on':'')+'" data-id="'+t.id+'" '
        +'onclick="this.classList.toggle(\'on\')">'+esc(t.nome)+'</button>').join('')+'</div>'
      +'<p style="font-size:13px;color:var(--muted);margin:2px 0 0">'
-     +'<b>Nenhuma marcada:</b> vale para a igreja inteira.<br>'
+     +'<b>Nenhuma marcada:</b> monta a escala só das equipes em que a pessoa serve; o resto vale para a igreja inteira.<br>'
      +'<b>Uma ou mais:</b> a pessoa monta a escala, cadastra voluntários, ajusta funções e acompanha '
      +'trocas <b>só dessas equipes</b>, e continua vendo o culto inteiro. '
-     +'Criar cultos, se liberado, vale para o calendário todo.</p>';
+     +'Criar cultos, se liberado, vale para o calendário todo. No <b>administrador</b>, as equipes marcadas valem só para montar a escala.</p>';
   openSheet('Permissões',h,()=>{
     const novo={};
     document.querySelectorAll('#sheetBody .row[data-k]').forEach(r=>{
       if(r.querySelector('.pill').classList.contains('ok'))novo[r.dataset.k]=true;});
     const eqs=document.getElementById('permEquipes')?chipsSel('permEquipes'):[];
-    /* administrador nao tem escopo: e ele quem distribui os escopos */
-    if(eqs.length&&!novo.admin&&Object.keys(novo).length)novo.escopo=eqs;
+    /* no administrador, as equipes marcadas valem so para montar a escala */
+    if(eqs.length&&Object.keys(novo).length)novo.escopo=eqs;
     if(p.perms.admin&&!novo.admin&&DB.pessoas.filter(x=>x.perms&&x.perms.admin).length<2){
       toast('Precisa haver ao menos um administrador');return false;}
     if(p.id===DB.sessao&&!novo.admin&&p.perms.admin){toast('Você não pode remover o próprio admin');return false;}
@@ -2996,7 +3074,15 @@ function enviarCobranca(evId,quem){
    migracao-avisos-de-troca.sql rodada, o aviso a lideranca e feito por ele
    (rpc avisar_lideres). Esta sonda descobre se a migracao ja rodou. */
 var AVISOS_NO_BANCO=false;
+async function sondarTurnos(){
+  try{
+    if(!naNuvem()||!SB||TURNO_NUVEM)return;
+    const{error}=await SB.from('indisponibilidades').select('turnos').limit(1);
+    if(!error){TURNO_NUVEM=true;}
+  }catch(e){}
+}
 async function sondarAvisosNoBanco(){
+  sondarTurnos();
   try{
     if(!naNuvem()||!SB)return;
     const{error}=await SB.rpc('avisar_lideres',{p_texto:null});
@@ -3176,7 +3262,7 @@ function podeAssumir(t,pid){
   const p=pessoa(pid);
   if(!p||pid===a.pessoaId)return false;
   if(!p.funcaoIds.includes(a.funcaoId))return false;              // precisa saber a funcao
-  if(ausente(pid,ev.data))return false;                            // nao pode na data
+  if(ausente(pid,ev.data,ev.hora))return false;                            // nao pode na data
   if(DB.escalas.some(x=>x.eventoId===ev.id&&x.pessoaId===pid))return false; // ja serve no culto
   return true;
 }
@@ -3457,7 +3543,8 @@ function achatar(db){
       perfil_id:a.pessoaId,status:a.status,avisos:a.avisos||{},
       ...(CHEGADA_NUVEM?{chegou_em:a.chegou||null}:{}),
       ...(SAIDA_NUVEM?{saiu_em:a.saiu||null}:{})})),
-    indisponibilidades:db.indisp.map(i=>({perfil_id:i.pessoaId,data:i.data})),
+    indisponibilidades:db.indisp.map(i=>({perfil_id:i.pessoaId,data:i.data,
+      ...(TURNO_NUVEM?{turnos:i.turnos||null}:{})})),
     ausencias:db.ausencias.map(a=>({id:a.id,perfil_id:a.pessoaId,inicio:a.inicio,fim:a.fim,motivo:a.motivo})),
     trocas:db.trocas.map(t=>({id:t.id,escala_id:t.escalaId,de_id:t.deId,para_id:t.paraId||null,
       aceita_por:t.aceitaPor||null,motivo:t.motivo||null,status:t.status,
@@ -3523,7 +3610,8 @@ function montar(dados){
       pessoaId:a.perfil_id,status:a.status,avisos:a.avisos||{},chegou:a.chegou_em||null,
       saiu:a.saiu_em||null,presencaPor:a.presenca_por||null};
   });
-  d.indisp=(dados.indisponibilidades||[]).map(i=>({pessoaId:i.perfil_id,data:i.data}));
+  d.indisp=(dados.indisponibilidades||[]).map(i=>({pessoaId:i.perfil_id,data:i.data,turnos:i.turnos||null}));
+  if((dados.indisponibilidades||[]).some(r=>r&&Object.prototype.hasOwnProperty.call(r,'turnos')))TURNO_NUVEM=true;
   d.ausencias=(dados.ausencias||[]).map(a=>({id:a.id,pessoaId:a.perfil_id,inicio:a.inicio,
     fim:a.fim,motivo:a.motivo}));
   d.trocas=(dados.trocas||[]).map(t=>({id:t.id,escalaId:t.escala_id,deId:t.de_id,paraId:t.para_id,
@@ -5559,8 +5647,9 @@ function vAgenda(pid){
   h+='<div class="sec-t">Dias avulsos</div><div class="pad">'+calendario(p.id)+'</div>';
   if(meus.length){h+='<div class="card">';
     meus.forEach(i=>{h+='<div class="row" onclick="toggleInd(\''+p.id+'\',\''+i.data+'\')">'
-      +'<div class="grow"><div class="t">'+fmtLong(i.data)+'</div></div>'
-      +'<span class="pill bad">remover</span></div>';});
+      +'<div class="grow"><div class="t">'+fmtLong(i.data)+'</div><div class="s">Não pode '
+      +textoTurnos(i).replace('só ','de ')+'</div></div>'
+      +'<span class="chev">&#8250;</span></div>';});
     h+='</div>';}
   if(!eu)h+='<div class="gap"></div><div class="pad"><button class="btn2" onclick="voltar()">Voltar</button></div>';
   return h;

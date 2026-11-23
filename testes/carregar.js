@@ -84,7 +84,7 @@ function carregar() {
     // escopo por equipe
     'escopoDe', 'podeEquipe', 'podePessoa', 'statusEscopo', 'trocaNoEscopo', 'pessoasNoEscopo',
     // foto de perfil
-    'rosto',
+    'rosto', 'indisponivel', 'turnoDaHora',
     'primeiroDiaDaSemana', 'datasRecorrentes',
     'carga', 'cargaJanela', 'cargaCiclo', 'cicloDe', 'cicloAtual', 'nomeDoCiclo',
     'mapaCarga', 'inicioJanela', 'ultimaVez', 'textoWhats',
