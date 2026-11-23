@@ -2356,8 +2356,11 @@ function vEquipe(id){
      +'<div class="t">'+esc(f.nome)+'</div><div class="s">'+q+' aptos</div></div>'
      +'<span class="pill">'+(f.qtd||1)+' por culto</span><span class="chev">&#8250;</span></div>';});
   h+='</div>';
-  h+='<div class="sec-t">Voluntários</div><div class="card">';
-  if(!membros.length)h+='<div class="empty">Ninguém nesta equipe ainda.</div>';
+  h+='<div class="sec-t">Voluntários'+(possoMexerNaEquipe(t.id)?' <span style="float:right;text-transform:none;letter-spacing:0">'
+   +'<a href="#" onclick="adicionarVoluntarioUI(\''+t.id+'\');return false" style="color:var(--brand);text-decoration:none;font-weight:700">+ Adicionar</a></span>':'')
+   +'</div><div class="card">';
+  if(!membros.length)h+='<div class="empty">Ninguém nesta equipe ainda.'
+    +(possoMexerNaEquipe(t.id)?' Toque em <b>+ Adicionar</b> para trazer quem já está no app.':'')+'</div>';
   membros.forEach(p=>{h+='<div class="row" onclick="go(\'pessoa\',\''+p.id+'\')">'
     +'<div class="avatar">'+rosto(p)+'</div><div class="grow"><div class="t">'+esc(p.nome)+'</div>'
     +'<div class="s">'+esc(p.funcaoIds.map(fid=>{const f=t.funcoes.find(x=>x.id===fid);return f&&f.nome;}).filter(Boolean).join(', ')||'sem função')+'</div></div>'
@@ -2521,9 +2524,15 @@ function vPessoa(id){
   const meus=DB.teams.filter(t=>p.teamIds.includes(t.id));
   if(!meus.length)h+='<div class="empty">Não está em nenhuma equipe.</div>';
   meus.forEach(t=>{const fs=t.funcoes.filter(f=>p.funcaoIds.includes(f.id)).map(f=>f.nome);
-    h+='<div class="row" style="cursor:default"><div class="avatar" style="background:'+t.cor+'22;color:'+t.cor+'">'
+    const mexe=!p.externa&&possoMexerNaEquipe(t.id);
+    h+='<div class="row" '+(mexe?'onclick="equipeDaPessoaUI(\''+p.id+'\',\''+t.id+'\')"':'style="cursor:default"')+'>'
+     +'<div class="avatar" style="background:'+t.cor+'22;color:'+t.cor+'">'
      +esc(ini(t.nome))+'</div><div class="grow"><div class="t">'+esc(t.nome)+'</div>'
-     +'<div class="s">'+esc(fs.join(', ')||'sem função definida')+'</div></div></div>';});
+     +'<div class="s">'+esc(fs.join(', ')||'sem função definida')+'</div></div>'
+     +(mexe?'<span class="chev">&#8250;</span>':'')+'</div>';});
+  if(!p.externa&&DB.teams.some(t=>!p.teamIds.includes(t.id)&&possoMexerNaEquipe(t.id)))
+    h+='<div class="row" onclick="adicionarAEquipeUI(\''+p.id+'\')"><div class="avatar" style="background:var(--fill);color:var(--brand)">'
+     +'+</div><div class="grow"><div class="t" style="color:var(--brand)">Adicionar a outra equipe</div></div></div>';
   h+='</div>';
   h+='<div class="sec-t">Próximas escalas</div><div class="card">';
   if(!proximas.length)h+='<div class="empty">Sem escalas futuras.</div>';
@@ -2672,6 +2681,83 @@ function liberarDia(pid,data,quieto){
   DB.indisp=DB.indisp.filter(x=>!(x.pessoaId===pid&&x.data===data));
   save();if(!quieto)closeSheet();render();toast('Dia liberado');
 }
+/* ---------- EQUIPES DE UMA PESSOA ----------
+   Estar numa equipe e ter ao menos uma funcao nela. Pela tela da pessoa da
+   para coloca-la em outra equipe, mudar as funcoes ou tirar da equipe; pela
+   tela da equipe, trazer alguem que ja esta cadastrado no app. Vale para as
+   equipes que quem mexe lidera (permissao de cadastrar pessoas). */
+const possoMexerNaEquipe=tid=>euPossoEquipe('pessoas',tid);
+function mudarFuncoesNaEquipe(pid,tid,fids){
+  const p=pessoa(pid), t=team(tid); if(!p||!t)return;
+  const daEquipe=t.funcoes.map(f=>f.id);
+  p.funcaoIds=[...new Set(p.funcaoIds.filter(f=>daEquipe.indexOf(f)<0).concat(fids))];
+  p.teamIds=[...new Set(p.teamIds.filter(x=>x!==tid).concat(fids.length?[tid]:[]))];
+  save();
+}
+function equipeDaPessoaUI(pid,tid){
+  const p=pessoa(pid), t=team(tid); if(!p||!t||!exigeEquipe('pessoas',tid))return;
+  const membro=p.teamIds.includes(tid), nome=esc(p.nome.split(' ')[0]);
+  let h='<div class="row" style="cursor:default;padding:0 0 14px"><div class="avatar">'+rosto(p)+'</div>'
+   +'<div class="grow"><div class="t">'+esc(p.nome)+'</div><div class="s">'
+   +(membro?'Funções em '+esc(t.nome):'Vai entrar em '+esc(t.nome))+'</div></div></div>';
+  if(!t.funcoes.length)
+    h+='<div class="warnbox" style="margin:0">'+esc(t.nome)+' ainda não tem funções. Crie as funções na tela da equipe primeiro.</div>';
+  else
+    h+='<label>Em que '+nome+' pode servir</label><div class="chips" id="fEq">'
+     +t.funcoes.map(f=>'<button class="chip'+(p.funcaoIds.includes(f.id)?' on':'')+'" data-id="'+f.id+'" '
+       +'onclick="this.classList.toggle(\'on\')">'+esc(f.nome)+'</button>').join('')+'</div>'
+     +'<p class="sub" style="font-size:13px;margin:0;padding:0">Marque uma ou mais. A escala automática só põe '
+     +nome+' nas funções marcadas.</p>';
+  if(membro)h+='<div class="gap"></div><button class="btn2 btn-d" onclick="tirarDaEquipe(\''+pid+'\',\''+tid+'\')">'
+    +'Tirar '+nome+' de '+esc(t.nome)+'</button>';
+  openSheet(membro?t.nome:'Adicionar a '+t.nome,h,t.funcoes.length?()=>{
+    const fids=chipsSel('fEq'); if(!fids.length){toast('Marque ao menos uma função');return false;}
+    mudarFuncoesNaEquipe(pid,tid,fids); render();
+    toast(membro?'Funções atualizadas':p.nome.split(' ')[0]+' agora está em '+t.nome);
+  }:null);
+}
+function tirarDaEquipe(pid,tid){
+  const p=pessoa(pid), t=team(tid); if(!p||!t||!exigeEquipe('pessoas',tid))return;
+  const futuras=DB.escalas.filter(a=>a.pessoaId===pid&&a.teamId===tid&&(evento(a.eventoId)||{}).data>=hojeIso()).length;
+  if(!confirm('Tirar '+p.nome+' de '+t.nome+'?'+(futuras?' Ela continua nas '+futuras
+    +' escala(s) já montadas dessa equipe; troque na escala se precisar.':'')))return;
+  mudarFuncoesNaEquipe(pid,tid,[]); closeSheet(); render(); toast(p.nome.split(' ')[0]+' saiu de '+t.nome);
+}
+function adicionarAEquipeUI(pid){
+  const p=pessoa(pid); if(!p)return;
+  const opcoes=DB.teams.filter(t=>!p.teamIds.includes(t.id)&&possoMexerNaEquipe(t.id));
+  if(!opcoes.length)return toast(p.nome.split(' ')[0]+' já está em todas as equipes que você lidera');
+  let h='<p class="sub" style="margin:0 0 12px;padding:0">Em qual equipe '+esc(p.nome.split(' ')[0])
+   +' também vai servir? Ela continua nas equipes em que já está.</p><div class="card" style="margin:0">';
+  opcoes.forEach(t=>{h+='<div class="row" onclick="equipeDaPessoaUI(\''+pid+'\',\''+t.id+'\')">'
+    +'<div class="avatar" style="background:'+t.cor+'22;color:'+t.cor+'">'+esc(ini(t.nome))+'</div>'
+    +'<div class="grow"><div class="t">'+esc(t.nome)+'</div><div class="s">'
+    +esc(t.funcoes.map(f=>f.nome).join(', ')||'sem funções ainda')+'</div></div><span class="chev">&#8250;</span></div>';});
+  openSheet('Adicionar a outra equipe',h+'</div>',null);
+}
+function adicionarVoluntarioUI(tid){
+  const t=team(tid); if(!t||!exigeEquipe('pessoas',tid))return;
+  const lista=DB.pessoas.filter(p=>!p.externa&&!p.teamIds.includes(tid))
+    .sort((a,b)=>a.nome.localeCompare(b.nome));
+  let h='<p class="sub" style="margin:0 0 12px;padding:0">Escolha alguém que já está cadastrado no app. '
+   +'A pessoa continua nas equipes em que já está.</p>';
+  if(lista.length>6)h+='<div class="busca" style="margin:0 0 10px">'+ico('lupa',18)
+   +'<input type="search" autocomplete="off" autocorrect="off" spellcheck="false" data-sem-foco '
+   +'placeholder="Procurar pelo nome" oninput="filtrarLinhas(this,\'#listaAddVol .row\')"></div>';
+  h+='<div class="card" id="listaAddVol" style="margin:0">';
+  lista.forEach(p=>{
+    const eqs=DB.teams.filter(x=>p.teamIds.includes(x.id)).map(x=>x.nome);
+    h+='<div class="row" data-busca="'+esc(p.nome)+'" onclick="equipeDaPessoaUI(\''+p.id+'\',\''+tid+'\')">'
+     +'<div class="avatar">'+rosto(p)+'</div><div class="grow"><div class="t">'+esc(p.nome)+'</div>'
+     +'<div class="s">'+esc(eqs.length?eqs.join(', '):'ainda sem equipe')+'</div></div>'
+     +'<span class="chev">&#8250;</span></div>';});
+  if(!lista.length)h+='<div class="empty">Todo mundo cadastrado já está em '+esc(t.nome)+'.</div>';
+  h+='<div class="empty" id="buscaVazia" style="display:none">Ninguém com esse nome.</div></div>';
+  if(euPosso('pessoas'))h+='<div class="gap"></div><button class="btn2" onclick="closeSheet();setTimeout(novaPessoa,260)">'
+    +'Cadastrar uma pessoa nova</button>';
+  openSheet('Adicionar a '+t.nome,h,null);
+}
+
 function formPessoa(p){
   let h='<label>Nome</label><input id="pNome" value="'+esc(p?p.nome:'')+'" placeholder="Maria Silva">'
    +'<label>Telefone (opcional)</label><input id="pTel" value="'+esc(p?p.telefone:'')+'" placeholder="(11) 90000-0000">';
